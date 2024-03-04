@@ -1,0 +1,20 @@
+name: mirror Ci
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  mirror:
+    name: Push content of the current repo on mirror
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: git@github.com:EpitechMscProPromo2025/T-DEV-800-NAN_1.git
+          ssh_private_key: ${{ secrets.SSH_KEY }}
