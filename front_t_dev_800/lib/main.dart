@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'features/homepage/presentation/screens/homepage.screen.dart';
+import 'package:front_t_dev_800/features/homepage/presentation/screens/homepage.screen.dart';
+import 'package:front_t_dev_800/features/viewpictures/presentation/screens/viewpictures.screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,8 +11,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: HomePage(),
+    return MaterialApp(
+      routes: {
+        '/': (context) => const HomePage(),
+        '/pictures': (context) => const ViewPictures(),
+      },
     );
   }
 }
