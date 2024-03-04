@@ -6,10 +6,18 @@ on:
   pull_request:
     branches:
       - main
+
 jobs:
-  check-pre-commit:
+  check-commits:
+    permissions: read-all
+
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Run Pre-Commit
         uses: pre-commit/action@v3.0.0
+
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
