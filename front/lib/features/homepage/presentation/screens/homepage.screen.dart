@@ -15,26 +15,40 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return const Scaffold(
       appBar: CustomAppBar(),
-      body: Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(bottom: 8.0),
-              child: Text(
-                'Album',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  'Album',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            // Utilise TripleContainerWidget sans passer d'imageUrls
-            TripleContainerWidget(),
-            // Supprimé la seconde instance de TripleContainerWidget
-            // car elle n'est plus nécessaire avec l'approche actuelle.
-          ],
+              // Utilise TripleContainerWidget sans passer d'imageUrls
+              AlbumCarouselWidget(),
+              Padding(
+                padding: EdgeInsets.only(top: 40.0),
+                child: Text(
+                  'Custom Album',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              // Utilise TripleContainerWidget sans passer d'imageUrls
+              AlbumCarouselWidget(),
+              // Supprimé la seconde instance de TripleContainerWidget
+              // car elle n'est plus nécessaire avec l'approche actuelle.
+            ],
+          ),
         ),
       ),
     );

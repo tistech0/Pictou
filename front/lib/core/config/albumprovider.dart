@@ -93,8 +93,6 @@ class AlbumProvider with ChangeNotifier {
         'assets/images/card.png',
       ],
     ),
-
-    // Ajoutez d'autres albums initiaux ici si nécessaire
   ];
 
   List<AlbumEntity> get albums => _albums;
