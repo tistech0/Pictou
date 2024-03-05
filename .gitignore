@@ -254,3 +254,5 @@ hs_err_pid*
 
 ## Nix
 .direnv/
+
+front/asset/images/
