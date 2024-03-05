@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:front_t_dev_800/core/config/albumprovider.dart';
+import 'package:front/core/config/albumprovider.dart';
+import 'package:front/features/homepage/presentation/screens/homepage.screen.dart';
 import 'package:provider/provider.dart';
-import 'package:front_t_dev_800/features/homepage/presentation/screens/homepage.screen.dart';
 
 void main() {
   runApp(const MyApp());

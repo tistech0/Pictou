@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:front_t_dev_800/features/home_configuration/domain/entities/album.entity.dart';
+import 'package:front/features/home_configuration/domain/entities/album.entity.dart';
 
 class AlbumProvider with ChangeNotifier {
   final List<AlbumEntity> _albums = [

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:front_t_dev_800/core/config/albumprovider.dart';
-import 'package:front_t_dev_800/features/home_configuration/domain/entities/album.entity.dart';
+import 'package:front/core/config/albumprovider.dart';
+import 'package:front/features/home_configuration/domain/entities/album.entity.dart';
 import 'package:provider/provider.dart';
 
 import 'container_image.widget.dart'; // Nom modifié pour suivre les conventions Dart
