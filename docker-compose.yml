@@ -6,6 +6,8 @@ services:
     restart: always
     env_file:
       - back/.env
+    ports:
+      - ${POSTGRES_PORT}:5432
 
   adminer:
     image: adminer
