@@ -1,0 +1,60 @@
+name: Backend
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - back/**
+      - .github/workflows/backend.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - back/**
+      - .github/workflows/backend.yml
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    working-directory: back
+
+jobs:
+  check-formatting:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "back-ci"
+        workspaces: "back -> target"
+    - name: Check formatting
+      run: cargo fmt --check
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "back-ci"
+        workspaces: "back -> target"
+    - name: Run clippy
+      run: cargo clippy -- -Dwarnings
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: "back-ci"
+        workspaces: "back -> target"
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
