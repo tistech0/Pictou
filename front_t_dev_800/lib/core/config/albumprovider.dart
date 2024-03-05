@@ -39,6 +39,21 @@ class AlbumProvider with ChangeNotifier {
         'assets/images/card.png',
       ],
     ),
+    AlbumEntity(
+      name: "Mon cinquième Album",
+      picturePath: [
+        'assets/images/workers.png',
+        'assets/images/card.png',
+      ],
+    ),
+    AlbumEntity(
+      name: "Mon cinquième Album",
+      picturePath: [
+        'assets/images/workers.png',
+        'assets/images/card.png',
+      ],
+    ),
+
     // Ajoutez d'autres albums initiaux ici si nécessaire
   ];
 

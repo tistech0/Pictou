@@ -13,10 +13,6 @@ class ContainerImageWidget extends StatelessWidget {
       height: 175,
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(
-          color: Colors.lightBlueAccent,
-          width: 2,
-        ),
         borderRadius: BorderRadius.circular(12),
         image: DecorationImage(
           image: AssetImage(imageUrl),
