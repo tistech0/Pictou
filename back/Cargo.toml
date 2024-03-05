@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4"
+tokio-postgres = "0.7"
+dotenv = "0.15"
+tokio = "1.36"
 tracing = "~0.1.40"
 tracing-actix-web = "~0.7.9"
 tracing-appender = "0.2.3"
