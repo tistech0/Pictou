@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:front_t_dev_800/core/config/albumprovider.dart';
 import 'package:front_t_dev_800/features/home_configuration/domain/entities/album.entity.dart';
 import 'package:provider/provider.dart';
-import 'package:front_t_dev_800/core/config/albumprovider.dart';
-import 'package:front_t_dev_800/features/homepage/presentation/widgets/container_image.widget.dart';
+
+import 'container_image.widget.dart'; // Nom modifié pour suivre les conventions Dart
 
 class TripleContainerWidget extends StatefulWidget {
   const TripleContainerWidget({Key? key}) : super(key: key);
 
   @override
-  State<TripleContainerWidget> createState() => _TripleContainerWidgetState();
+  _TripleContainerWidgetState createState() => _TripleContainerWidgetState();
 }
 
 class _TripleContainerWidgetState extends State<TripleContainerWidget> {
@@ -28,16 +29,14 @@ class _TripleContainerWidgetState extends State<TripleContainerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final albums = Provider.of<AlbumProvider>(context).albums;
-    int splitPoint = (albums.length / 2).ceil();
+    final albums = context.watch<AlbumProvider>().albums;
+    final splitPoint = (albums.length / 2).ceil();
 
-    var firstLineAlbums = albums.take(splitPoint).toList();
-    var secondLineAlbums = albums.skip(splitPoint).toList();
+    final firstLineAlbums = albums.take(splitPoint).toList();
+    final secondLineAlbums = albums.skip(splitPoint).toList();
 
-    // Ajustez selon que vous ayez un nombre pair ou impair d'albums
     if (albums.length % 2 != 0) {
-      // Assurez-vous que l'album fictif pour l'alignement a la même structure mais sans contenu
-      secondLineAlbums.add(AlbumEntity(name: '', picturePath: []));
+      secondLineAlbums.add(AlbumEntity(name: "", picturePath: [""]));
     }
 
     return SingleChildScrollView(
@@ -45,42 +44,27 @@ class _TripleContainerWidgetState extends State<TripleContainerWidget> {
       controller: _scrollController,
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: firstLineAlbums
-                .map((album) => _buildAlbumWidget(album))
-                .toList(),
-          ),
-          const SizedBox(height: 20), // Espacement entre les deux lignes
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: secondLineAlbums
-                .map((album) => _buildAlbumWidget(album))
-                .toList(),
-          ),
+          _buildAlbumsRow(firstLineAlbums),
+          const SizedBox(height: 20), // Espacement entre les lignes
+          _buildAlbumsRow(secondLineAlbums),
         ],
       ),
     );
   }
 
+  Widget _buildAlbumsRow(List<AlbumEntity> albums) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: albums.map(_buildAlbumWidget).toList(),
+    );
+  }
+
   Widget _buildAlbumWidget(AlbumEntity album) {
-    String imageUrl =
+    final imageUrl =
         album.picturePath.isNotEmpty ? album.picturePath.first : '';
     return Padding(
-      padding: const EdgeInsets.all(2.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ContainerImageWidget(imageUrl: imageUrl),
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text(
-              album.name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 2.0),
+      child: ContainerImageWidget(imageUrl: imageUrl, title: album.name),
     );
   }
 }
