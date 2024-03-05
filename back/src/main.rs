@@ -1,7 +1,9 @@
 use std::env::var;
 use std::io;
 
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{
+    get, middleware::NormalizePath, post, web, App, HttpResponse, HttpServer, Responder,
+};
 use dotenv::dotenv;
 use tokio_postgres::{Error, NoTls};
 use tracing::{info, warn};
@@ -68,6 +70,7 @@ async fn main() -> io::Result<()> {
     let server = HttpServer::new(|| {
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(NormalizePath::trim())
             .service(hello)
             .service(echo)
             .route("/hey", web::get().to(manual_hello))
