@@ -22,10 +22,10 @@ async fn echo(req_body: String) -> impl Responder {
 
 async fn connect_to_db() -> Result<(), Error> {
     dotenv().ok();
-    let host = var("PG_HOST").expect("PG_HOST not set in .env");
-    let user = var("PG_USER").expect("PG_USER not set in .env");
-    let password = var("PG_PASSWORD").expect("PG_PASSWORD not set in .env");
-    let dbname = var("PG_DATABASE").expect("PG_DATABASE not set in .env");
+    let host = var("POSTGRES_HOST").expect("PG_HOST not set in .env");
+    let user = var("POSTGRES_USER").expect("PG_USER not set in .env");
+    let password = var("POSTGRES_PASSWORD").expect("PG_PASSWORD not set in .env");
+    let dbname = var("POSTGRES_DB").expect("PG_DATABASE not set in .env");
 
     let conn_string = format!(
         "host={} user={} password={} dbname={}",
