@@ -9,8 +9,8 @@ class ContainerImageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
-      height: 200,
+      width: 175,
+      height: 175,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(
