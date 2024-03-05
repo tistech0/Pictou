@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:front_t_dev_800/features/settings/presentation/screens/setting.screen.dart';
+import 'package:front/features/settings/presentation/screens/setting.screen.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppBar({super.key});
