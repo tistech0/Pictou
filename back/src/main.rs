@@ -8,11 +8,14 @@ use anyhow::Context;
 use dotenv::dotenv;
 use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 mod api;
 mod config;
 mod database;
 mod log;
+mod openapi;
 mod schema;
 
 use crate::{config::AppConfiguration, database::Database};
@@ -60,6 +63,10 @@ async fn init() -> anyhow::Result<()> {
             .service(hello)
             .service(echo)
             .service(web::scope("/api").configure(api::configure))
+            .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}")
+                    .url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
+            )
             .route("/hey", web::get().to(manual_hello))
     })
     .bind((address.clone(), port))?;
