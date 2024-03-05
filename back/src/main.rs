@@ -27,9 +27,11 @@ async fn connect_to_db() -> Result<(), Error> {
     let password = var("PG_PASSWORD").expect("PG_PASSWORD not set in .env");
     let dbname = var("PG_DATABASE").expect("PG_DATABASE not set in .env");
 
-    let conn_string = format!("host={} user={} password={} dbname={}", host, user, password, dbname);
+    let conn_string = format!(
+        "host={} user={} password={} dbname={}",
+        host, user, password, dbname
+    );
     let (client, connection) = tokio_postgres::connect(&conn_string, NoTls).await?;
-
 
     // The connection object performs the actual communication with the database,
     // so spawn it off to run on its own.
@@ -40,9 +42,7 @@ async fn connect_to_db() -> Result<(), Error> {
     });
 
     // Now we can execute a simple statement that just returns its parameter.
-    let rows = client
-        .query("SELECT * FROM User", &[])
-        .await?;
+    let rows = client.query("SELECT * FROM User", &[]).await?;
 
     println!("{rows:?}");
 
@@ -59,7 +59,11 @@ async fn main() -> io::Result<()> {
     let _guard = log::init();
     connect_to_db().await.expect("failed to connect to db");
     dotenv().ok();
-    let port = var("PORT").expect("PORT not set in .env").as_str().parse::<u16>().expect("PORT is not a valid number");
+    let port = var("PORT")
+        .expect("PORT not set in .env")
+        .as_str()
+        .parse::<u16>()
+        .expect("PORT is not a valid number");
     let address = &*var("ADDRESS").expect("ADDRESS not set in .env");
     let server = HttpServer::new(|| {
         App::new()
