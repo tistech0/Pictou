@@ -1,7 +1,9 @@
 use utoipa::OpenApi;
 use utoipa_auto_discovery::utoipa_auto_discovery;
 
-use crate::api::images::ImageQuality;
+use crate::api::images::{
+    Binary, ImageMetaData, ImagePatch, ImageQuality, ImageUploadResponse, ImagesMetaData,
+};
 
 #[utoipa_auto_discovery(paths = "( crate::api::images => ./src/api/images.rs )")]
 #[derive(OpenApi)]
@@ -15,7 +17,7 @@ use crate::api::images::ImageQuality;
         (url = "/api")
     ),
     components(
-        schemas(ImageQuality)
+        schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImageMetaData, ImagesMetaData)
     ),
     tags(
         (name = "images", description = "Images management endpoints.")
