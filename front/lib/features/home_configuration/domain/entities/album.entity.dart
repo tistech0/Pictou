@@ -1,8 +1,10 @@
 class AlbumEntity {
+  final String id; // Identifiant unique de l'album
   final String name;
   List<String> picturePath;
 
   AlbumEntity({
+    required this.id,
     required this.name,
     required this.picturePath,
   });
@@ -12,10 +14,12 @@ class AlbumEntity {
 
   // Méthode pour créer une copie de cette instance avec des valeurs modifiables
   AlbumEntity copyWith({
+    String? id,
     String? name,
     List<String>? picturePath,
   }) {
     return AlbumEntity(
+      id: id ?? this.id,
       name: name ?? this.name,
       picturePath: picturePath ?? this.picturePath,
     );
@@ -27,5 +31,6 @@ class AlbumEntity {
   }
 
   @override
-  String toString() => 'AlbumEntity( name: $name, picturePath: $picturePath)';
+  String toString() =>
+      'AlbumEntity(id: $id, name: $name, picturePath: $picturePath)';
 }

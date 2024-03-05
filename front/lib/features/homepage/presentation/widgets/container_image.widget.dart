@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:front/features/home_configuration/domain/entities/album.entity.dart';
+import 'package:front/features/viewpictures/presentation/screens/viewpictures.screen.dart'; // Importez AlbumEntity
 
 class ContainerImageWidget extends StatelessWidget {
-  final String imageUrl;
-  final String title; // Ajout du titre de l'album
+  final AlbumEntity album;
 
   const ContainerImageWidget(
-      {Key? key, required this.imageUrl, required this.title})
+      {Key? key,
+      required this.album,
+      required String imageUrl,
+      required String title})
       : super(key: key);
 
   @override
@@ -13,30 +17,40 @@ class ContainerImageWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 175,
-          height: 175,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: AssetImage(imageUrl),
-              fit: BoxFit.cover,
+        InkWell(
+          onTap: () {
+            // Utilisez l'ID de l'album pour la navigation
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => ViewPictures(albumId: album.id)),
+            );
+          },
+          child: Container(
+            width: 175,
+            height: 175,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              image: DecorationImage(
+                image: AssetImage(album.picturePath
+                    .first), // Utilisez la première image de l'album
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 8), // Espacement entre l'image et le titre
+        const SizedBox(height: 8),
         SizedBox(
-          width: 175, // Largeur fixe identique à celle de l'image
+          width: 175,
           child: Text(
-            title,
+            album.name,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
-            maxLines: 1, // Limite le texte à une seule ligne
-            overflow: TextOverflow
-                .ellipsis, // Ajoute des points de suspension si le texte dépasse
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

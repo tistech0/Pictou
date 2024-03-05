@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
 import 'package:front/features/homepage/presentation/screens/homepage.screen.dart';
+import 'package:front/features/viewpictures/presentation/screens/viewpictures.screen.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -19,6 +20,9 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         routes: {
           '/': (context) => const HomePage(),
+          '/view-picture': (context) => const ViewPictures(
+                albumId: '',
+              ),
         },
       ),
     );

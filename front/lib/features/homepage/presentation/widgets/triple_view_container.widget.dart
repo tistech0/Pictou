@@ -36,7 +36,7 @@ class _TripleContainerWidgetState extends State<TripleContainerWidget> {
     final secondLineAlbums = albums.skip(splitPoint).toList();
 
     if (albums.length % 2 != 0) {
-      secondLineAlbums.add(AlbumEntity(name: "", picturePath: [""]));
+      secondLineAlbums.add(AlbumEntity(name: "", picturePath: [""], id: ''));
     }
 
     return SingleChildScrollView(
@@ -45,7 +45,7 @@ class _TripleContainerWidgetState extends State<TripleContainerWidget> {
       child: Column(
         children: [
           _buildAlbumsRow(firstLineAlbums),
-          const SizedBox(height: 20), // Espacement entre les lignes
+          const SizedBox(height: 20),
           _buildAlbumsRow(secondLineAlbums),
         ],
       ),
@@ -64,7 +64,11 @@ class _TripleContainerWidgetState extends State<TripleContainerWidget> {
         album.picturePath.isNotEmpty ? album.picturePath.first : '';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 2.0),
-      child: ContainerImageWidget(imageUrl: imageUrl, title: album.name),
+      child: ContainerImageWidget(
+        imageUrl: imageUrl,
+        title: album.name,
+        album: album, // Ajout de l'instance de l'album
+      ),
     );
   }
 }
