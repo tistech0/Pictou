@@ -9,6 +9,7 @@ use dotenv::dotenv;
 use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
 
+mod api;
 mod config;
 mod database;
 mod log;
@@ -58,6 +59,7 @@ async fn init() -> anyhow::Result<()> {
             )
             .service(hello)
             .service(echo)
+            .service(web::scope("/api").configure(api::configure))
             .route("/hey", web::get().to(manual_hello))
     })
     .bind((address.clone(), port))?;
