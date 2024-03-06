@@ -101,12 +101,14 @@ where
     web::block(move || {
         debug!("acquiring a connection from the pool");
         let mut conn = db.pool.get().map_err(|error| {
+            debug!("here is it");
             error!(
                 error = &error as &dyn StdError,
                 "failed to get a connection from the pool"
             );
             DatabaseError::R2d2(error)
         })?;
+        debug!("after effect");
         scope(&mut conn)
     })
     .await

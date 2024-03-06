@@ -38,7 +38,9 @@ fn make_subscriber() -> (impl Subscriber + Send + Sync, Guard) {
             .expect("failed to create appender for logging file"),
     );
 
-    let stdout_layer = tracing_subscriber::fmt::layer().with_writer(stdout_appender);
+    let stdout_layer = tracing_subscriber::fmt::layer()
+        .pretty()
+        .with_writer(stdout_appender);
     let file_layer = tracing_subscriber::fmt::layer()
         .with_ansi(false) // disable ANSI colors in file
         .with_writer(file_appender);

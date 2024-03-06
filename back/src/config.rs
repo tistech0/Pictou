@@ -10,6 +10,9 @@ pub struct AppConfiguration {
     pub postgres_db: String,
     pub address: String,
     pub port: u16,
+    pub session_key: String,
+    pub google_client_id: Option<oauth2::ClientId>,
+    pub google_client_secret: Option<oauth2::ClientSecret>,
 }
 
 impl AppConfiguration {
@@ -24,6 +27,11 @@ impl AppConfiguration {
             postgres_db: env::var("POSTGRES_DB")?,
             address: env::var("ADDRESS")?,
             port: env::var("PORT")?.parse()?,
+            session_key: env::var("SESSION_KEY")?,
+            google_client_id: env::var("GOOGLE_CLIENT_ID").ok().map(oauth2::ClientId::new),
+            google_client_secret: env::var("GOOGLE_CLIENT_SECRET")
+                .ok()
+                .map(oauth2::ClientSecret::new),
         })
     }
 }
