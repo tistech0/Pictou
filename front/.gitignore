@@ -44,5 +44,5 @@ app.*.map.json
 
 
 /assets/
-pubspec.lock
+
 ```
