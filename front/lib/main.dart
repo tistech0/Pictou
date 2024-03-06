@@ -17,16 +17,16 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AlbumProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()), // Add this line
       ],
-      child: Consumer<ThemeProvider>( // Use Consumer to access ThemeProvider
+      child: Consumer<ThemeProvider>(
+        // Use Consumer to access ThemeProvider
         builder: (context, themeProvider, child) {
           return MaterialApp(
             theme: ThemeData(
               brightness: Brightness.light,
               colorScheme: const ColorScheme.light(
-                primary: Colors.white,
-                onPrimary: Colors.black54,
-                secondary: Colors.grey
-              ),
+                  primary: Colors.white,
+                  onPrimary: Colors.black54,
+                  secondary: Colors.grey),
             ),
             darkTheme: ThemeData(
               brightness: Brightness.dark,
@@ -37,12 +37,14 @@ class MyApp extends StatelessWidget {
                 secondary: Color(0xFF535C91),
               ),
             ),
-            themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light, // Use themeProvider to access isDark
+            themeMode: themeProvider.isDark
+                ? ThemeMode.dark
+                : ThemeMode.light, // Use themeProvider to access isDark
             routes: {
               '/': (context) => const HomePage(),
               '/view-picture': (context) => const ViewPictures(
-                albumId: '',
-              ),
+                    albumId: '',
+                  ),
             },
           );
         },
