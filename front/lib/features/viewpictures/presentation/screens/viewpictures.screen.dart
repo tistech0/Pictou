@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
-// Supposons que AlbumProvider est accessible globalement ou injecté via un constructeur ou un contexte
+import 'package:front/features/viewpictures/presentation/widgets/photo_grid_item.widget.dart';
 
 class ViewPictures extends StatelessWidget {
-  final String albumId; // Modifier pour stocker albumId
+  final String albumId;
+
   const ViewPictures({super.key, required this.albumId});
 
   @override
@@ -11,29 +12,19 @@ class ViewPictures extends StatelessWidget {
     final album =
         AlbumProvider().albums.firstWhere((album) => album.id == albumId);
 
-    // Si l'album n'est pas trouvé, afficher un message d'erreur
-    if (album == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Album Introuvable'),
-        ),
-        body: const Center(
-          child: Text('Aucun album correspondant trouvé.'),
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(album.name), // Utiliser le nom de l'album comme titre
+        title: Text(album.name),
       ),
-      body: ListView.builder(
+      body: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3, // Nombre de colonnes
+          crossAxisSpacing: 4, // Espace horizontal entre les éléments
+          mainAxisSpacing: 4, // Espace vertical entre les éléments
+        ),
         itemCount: album.picturePath.length,
         itemBuilder: (context, index) {
-          return ListTile(
-            leading: Image.asset(album.picturePath[index]),
-            title: Text('Image ${index + 1}'),
-          );
+          return PhotoGridItem(imagePath: album.picturePath[index]);
         },
       ),
     );

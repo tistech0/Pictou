@@ -19,12 +19,13 @@ class ContainerImageWidget extends StatelessWidget {
       children: [
         InkWell(
           onTap: () {
-            // Utilisez l'ID de l'album pour la navigation
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => ViewPictures(albumId: album.id)),
-            );
+            if (album.id.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => ViewPictures(albumId: album.id)),
+              );
+            }
           },
           child: Container(
             width: 175,
@@ -33,8 +34,7 @@ class ContainerImageWidget extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               image: DecorationImage(
-                image: AssetImage(album.picturePath
-                    .first), // Utilisez la première image de l'album
+                image: AssetImage(album.picturePath.first),
                 fit: BoxFit.cover,
               ),
             ),

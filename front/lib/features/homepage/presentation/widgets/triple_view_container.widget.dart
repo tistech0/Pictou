@@ -36,7 +36,8 @@ class _TripleContainerWidgetState extends State<TripleContainerWidget> {
     final secondLineAlbums = albums.skip(splitPoint).toList();
 
     if (albums.length % 2 != 0) {
-      secondLineAlbums.add(AlbumEntity(name: "", picturePath: [""], id: ''));
+      secondLineAlbums.add(AlbumEntity(
+          name: "", picturePath: ["assets/images/default_image.webp"], id: ''));
     }
 
     return SingleChildScrollView(

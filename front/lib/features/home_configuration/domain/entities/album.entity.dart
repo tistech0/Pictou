@@ -9,10 +9,8 @@ class AlbumEntity {
     required this.picturePath,
   });
 
-  // Méthode pour vérifier si l'album contient des images
   bool get hasPictures => picturePath.isNotEmpty;
 
-  // Méthode pour créer une copie de cette instance avec des valeurs modifiables
   AlbumEntity copyWith({
     String? id,
     String? name,
@@ -25,7 +23,6 @@ class AlbumEntity {
     );
   }
 
-  // Méthode pour mettre à jour les chemins d'images de l'album
   void updatePicturePaths({required List<String> updatedPicturePaths}) {
     picturePath = updatedPicturePaths;
   }
