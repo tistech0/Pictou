@@ -12,6 +12,7 @@ use tracing_actix_web::TracingLogger;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+mod auth;
 mod api;
 mod config;
 mod database;
@@ -74,6 +75,8 @@ async fn init() -> anyhow::Result<()> {
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
             )
+            .configure(|cfg| auth::routes(cfg, app_cfg.clone()))
+            // .service(web::scope("/auth").configure(auth::routes))
             .route("/hey", web::get().to(manual_hello))
     })
     .bind((address.clone(), port))?;
