@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:front/features/home_configuration/domain/entities/album.entity.dart';
+import 'package:front/core/domain/entities/album.entity.dart';
 
 class AlbumProvider with ChangeNotifier {
   final List<AlbumEntity> _albums = [
@@ -43,7 +43,6 @@ class AlbumProvider with ChangeNotifier {
         'assets/images/card.png',
       ],
     ),
-    // Assurez-vous que chaque AlbumEntity a un ID unique
     // ...
   ];
 

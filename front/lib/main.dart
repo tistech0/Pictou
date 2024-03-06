@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
-import 'package:front/features/homepage/presentation/screens/homepage.screen.dart';
+import 'package:front/features/home/presentation/screens/homepage.screen.dart';
 import 'package:front/features/viewpictures/presentation/screens/viewpictures.screen.dart';
 import 'package:front/core/config/themeprovider.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AlbumProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()), // Add this line
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: Consumer<ThemeProvider>(
         // Use Consumer to access ThemeProvider
@@ -37,9 +39,7 @@ class MyApp extends StatelessWidget {
                 secondary: Color(0xFF535C91),
               ),
             ),
-            themeMode: themeProvider.isDark
-                ? ThemeMode.dark
-                : ThemeMode.light, // Use themeProvider to access isDark
+            themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
             routes: {
               '/': (context) => const HomePage(),
               '/view-picture': (context) => const ViewPictures(

@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:front/features/home_configuration/domain/entities/album.entity.dart';
+import 'package:front/core/domain/entities/album.entity.dart';
 import 'package:front/features/viewpictures/presentation/screens/viewpictures.screen.dart'; // Importez AlbumEntity
 
 class ContainerImageWidget extends StatelessWidget {
   final AlbumEntity album;
 
   const ContainerImageWidget(
-      {Key? key,
+      {super.key,
       required this.album,
       required String imageUrl,
-      required String title})
-      : super(key: key);
+      required String title});
 
   @override
   Widget build(BuildContext context) {

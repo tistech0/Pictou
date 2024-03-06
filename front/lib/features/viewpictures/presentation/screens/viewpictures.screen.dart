@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:front/core/config/albumprovider.dart';
 import 'package:front/features/viewpictures/presentation/widgets/photo_grid_item.widget.dart';
 
@@ -9,8 +10,9 @@ class ViewPictures extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final albumProvider = Provider.of<AlbumProvider>(context);
     final album =
-        AlbumProvider().albums.firstWhere((album) => album.id == albumId);
+        albumProvider.albums.firstWhere((album) => album.id == albumId);
 
     return Scaffold(
       appBar: AppBar(
@@ -18,13 +20,16 @@ class ViewPictures extends StatelessWidget {
       ),
       body: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, // Nombre de colonnes
-          crossAxisSpacing: 4, // Espace horizontal entre les éléments
-          mainAxisSpacing: 4, // Espace vertical entre les éléments
+          crossAxisCount: 3,
+          crossAxisSpacing: 4,
+          mainAxisSpacing: 4,
         ),
         itemCount: album.picturePath.length,
         itemBuilder: (context, index) {
-          return PhotoGridItem(imagePath: album.picturePath[index]);
+          return PhotoGridItem(
+            key: ValueKey(album.picturePath[index]),
+            imagePath: album.picturePath[index],
+          );
         },
       ),
     );
