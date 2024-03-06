@@ -5,14 +5,14 @@ import 'package:provider/provider.dart';
 
 import 'container_image.widget.dart'; // Nom modifié pour suivre les conventions Dart
 
-class TripleContainerWidget extends StatefulWidget {
-  const TripleContainerWidget({Key? key}) : super(key: key);
+class AlbumCarouselWidget extends StatefulWidget {
+  const AlbumCarouselWidget({Key? key}) : super(key: key);
 
   @override
-  _TripleContainerWidgetState createState() => _TripleContainerWidgetState();
+  _AlbumCarouselWidgetState createState() => _AlbumCarouselWidgetState();
 }
 
-class _TripleContainerWidgetState extends State<TripleContainerWidget> {
+class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
   late ScrollController _scrollController;
 
   @override
