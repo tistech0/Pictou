@@ -17,6 +17,22 @@ class ViewPictures extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(album.name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              //share album with other users
+            },
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.delete,
+            ),
+            onPressed: () {
+              //share album with other users
+            },
+          ),
+        ],
       ),
       body: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
