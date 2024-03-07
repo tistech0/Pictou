@@ -12,8 +12,8 @@ class PhotoViewer extends StatelessWidget {
       child: GestureDetector(
         onTap: () => Navigator.of(context).pop(),
         child: SizedBox(
-          width: double.infinity,
-          height: double.infinity,
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height,
           child: Image.asset(
             imagePath,
             fit: BoxFit.contain,
