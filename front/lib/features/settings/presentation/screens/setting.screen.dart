@@ -1,43 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:front/core/config/albumprovider.dart';
 import 'package:front/core/config/themeprovider.dart';
 import 'package:provider/provider.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-      ],
-      child: MaterialApp(
-        theme: ThemeData(
-          brightness: Brightness.light,
-          colorScheme: const ColorScheme.light(
-            primary: Colors.white,
-            onPrimary: Colors.black,
-          ),
-        ),
-        darkTheme: ThemeData(
-          brightness: Brightness.dark,
-          colorScheme: const ColorScheme.dark(
-            primary: Colors.black,
-            onPrimary: Colors.white,
-          ),
-        ),
-        themeMode: Provider.of<ThemeProvider>(context).isDark
-            ? ThemeMode.dark
-            : ThemeMode.light,
-      ),
-    );
-  }
-}
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
