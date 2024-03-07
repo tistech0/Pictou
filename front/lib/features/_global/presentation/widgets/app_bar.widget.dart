@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:front/features/_global/presentation/widgets/import_pictures_dialog.widget.dart';
 import 'package:front/features/_global/presentation/widgets/new_album_dialog.widget.dart';
 import 'package:front/features/settings/presentation/screens/setting.screen.dart';
 
@@ -32,6 +33,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 );
                 break;
               case 'import_photos':
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) =>
+                      const ImportPicturesDialog(),
+                );
                 break;
               default:
             }
