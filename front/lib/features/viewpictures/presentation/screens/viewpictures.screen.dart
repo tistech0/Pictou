@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:front/features/_global/presentation/widgets/bottom_bar.widget.dart';
 import 'package:provider/provider.dart';
 import 'package:front/core/config/albumprovider.dart';
 import 'package:front/features/viewpictures/presentation/widgets/photo_grid_item.widget.dart';
@@ -47,6 +48,9 @@ class ViewPictures extends StatelessWidget {
             imagePath: album.picturePath[index],
           );
         },
+      ),
+      bottomNavigationBar: BottomBarWidget(
+        onImportPressed: () {},
       ),
     );
   }

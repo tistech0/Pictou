@@ -1,5 +1,5 @@
 class AlbumEntity {
-  final String id; // Identifiant unique de l'album
+  final String id;
   final String name;
   List<String> picturePath;
 

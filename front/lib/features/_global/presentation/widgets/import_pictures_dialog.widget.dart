@@ -11,7 +11,7 @@ class ImportPicturesDialog extends StatefulWidget {
 class _NewAlbumDialogState extends State<ImportPicturesDialog> {
   final ImagePicker _picker = ImagePicker();
   String? _selectedAlbum;
-  List<String> _albums = ['Album 1', 'Album 2', 'Album 3'];
+  final List<String> _albums = ['Album 1', 'Album 2', 'Album 3'];
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +38,9 @@ class _NewAlbumDialogState extends State<ImportPicturesDialog> {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
-              final List<XFile>? images = await _picker.pickMultiImage();
+              final List<XFile> images = await _picker.pickMultiImage();
               // Ici, ajoutez votre logique pour importer les images dans l'album sélectionné
-              if (images != null && images.isNotEmpty) {
+              if (images.isNotEmpty) {
                 // Logique pour traiter les images sélectionnées
                 print('Images sélectionnées pour $_selectedAlbum');
               }
@@ -55,8 +55,8 @@ class _NewAlbumDialogState extends State<ImportPicturesDialog> {
       actions: <Widget>[
         TextButton(
           style: TextButton.styleFrom(
-            primary: Colors.white,
-            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.red,
           ),
           onPressed: () {
             Navigator.of(context).pop();
