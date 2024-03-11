@@ -5,9 +5,9 @@ class PhotoGridItem extends StatelessWidget {
   final String imagePath;
 
   const PhotoGridItem({
-    Key? key,
+    super.key,
     required this.imagePath,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
