@@ -5,9 +5,12 @@ use crate::api::albums::{Album, AlbumList, AlbumPost};
 use crate::api::images::{
     Binary, ImageMetaData, ImagePatch, ImageQuality, ImageUploadResponse, ImagesMetaData,
 };
+use crate::api::users::{User, UserList, UserPost};
 
 #[utoipa_auto_discovery(
-    paths = "( crate::api::images => ./src/api/images.rs ); ( crate::api::albums => ./src/api/albums.rs )"
+    paths = "( crate::api::images => ./src/api/images.rs ); 
+            ( crate::api::albums => ./src/api/albums.rs ); 
+            ( crate::api::users => ./src/api/users.rs )"
 )]
 #[derive(OpenApi)]
 #[openapi(
@@ -20,11 +23,14 @@ use crate::api::images::{
         (url = "/api")
     ),
     components(
-        schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImageMetaData, ImagesMetaData, Album, AlbumList, AlbumPost)
+        schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImageMetaData, ImagesMetaData, 
+            Album, AlbumList, AlbumPost, 
+            User, UserList, UserPost)
     ),
     tags(
         (name = "images", description = "Images management endpoints."),
-        (name = "albums", description = "Albums management endpoints.")
+        (name = "albums", description = "Albums management endpoints."),
+        (name = "users", description = "Users management endpoints.")
     )
     )]
 pub struct ApiDoc;
