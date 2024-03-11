@@ -7,9 +7,9 @@ services:
     volumes:
     - ./database:/var/lib/postgresql
     env_file:
-      - back/.env
+      - ./back/.env
     ports:
-      - ${POSTGRES_PORT}:5432
+        - "5432:5432"
 
   adminer:
     image: adminer
