@@ -4,13 +4,37 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-actix-web = "4"
-tokio-postgres = "0.7"
-dotenv = "0.15"
-tokio = "1.36"
+actix-web = "^4.5.1"
+dotenv = "~0.15.0"
+tokio = "^1.36.0"
 tracing = "~0.1.40"
-tracing-actix-web = "~0.7.9"
-tracing-appender = "0.2.3"
+tracing-actix-web = "~0.7.10"
+tracing-appender = "~0.2.3"
 tracing-futures = "~0.2.5"
-tracing-subscriber = { version = "~0.3.18", features = ["fmt", "env-filter", "ansi", "time"] }
-diesel = "^2.1.4"
+tracing-subscriber = { version = "~0.3.18", features = [
+    "fmt",
+    "env-filter",
+    "ansi",
+    "time",
+    "registry",
+] }
+oauth2 = "^4.4.2"
+anyhow = "^1.0.81"
+actix-session = { version = "~0.9.0", features = ["cookie-session"] }
+serde = { version = "~1.0.197", features = ["derive"] }
+diesel = { version = "^2.1.4", features = [
+    "postgres",
+    "r2d2",
+    "chrono",
+    "uuid",
+] }
+r2d2 = "~0.8.10"
+uuid = { version = "^1.7.0", features = ["serde", "v4"] }
+jsonwebtoken = "^9.2.0"
+once_cell = "^1.19.0"
+futures-util = "~0.3.30"
+urlencoding = "^2.1.3"
+
+[dev-dependencies]
+actix-rt = "^2.9.0"
+tracing-test = "~0.2.4"
