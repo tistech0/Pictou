@@ -161,13 +161,13 @@ pub async fn edit_image(img_id: web::Path<u16>, patch: web::Json<ImagePatch>) ->
         ("id" = u16, Path, description="Image to delete", example=1),
     ),
     responses(
-        (status = 2004, description = "Successfully deleted")
+        (status = 204, description = "Successfully deleted")
     ),
     tag="images"
 )]
 #[delete("/{id}")]
 pub async fn delete_image(img_id: web::Path<u16>) -> impl Responder {
-    // todo!("Implement delete_image method.");
+    todo!("Implement delete_image method.");
     HttpResponse::NoContent().finish()
 }
 
