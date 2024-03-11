@@ -4,6 +4,8 @@ services:
   db:
     image: postgres
     restart: always
+    volumes:
+    - ./database:/var/lib/postgresql
     env_file:
       - back/.env
     ports:

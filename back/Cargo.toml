@@ -13,3 +13,4 @@ tracing-actix-web = "~0.7.9"
 tracing-appender = "0.2.3"
 tracing-futures = "~0.2.5"
 tracing-subscriber = { version = "~0.3.18", features = ["fmt", "env-filter", "ansi", "time"] }
+diesel = "^2.1.4"

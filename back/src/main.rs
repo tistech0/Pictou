@@ -10,6 +10,7 @@ use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
 
 mod log;
+mod schema;
 
 #[get("/")]
 async fn hello() -> impl Responder {
