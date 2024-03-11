@@ -9,7 +9,7 @@ class PhotoGridItem extends StatelessWidget {
     super.key,
     required this.imagePath,
     required this.allImagePaths,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
