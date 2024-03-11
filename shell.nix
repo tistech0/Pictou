@@ -4,6 +4,7 @@ pkgs.mkShell {
   name = "pictou";
   buildInputs = with pkgs; [
     pre-commit
+    diesel-cli
   ];
 
   shellHook = ''
