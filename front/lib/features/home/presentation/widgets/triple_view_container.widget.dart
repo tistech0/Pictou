@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
-import 'package:front/features/home_configuration/domain/entities/album.entity.dart';
+import 'package:front/core/domain/entities/album.entity.dart';
 import 'package:provider/provider.dart';
 
 import 'container_image.widget.dart'; // Nom modifié pour suivre les conventions Dart
 
 class AlbumCarouselWidget extends StatefulWidget {
-  const AlbumCarouselWidget({Key? key}) : super(key: key);
+  const AlbumCarouselWidget({super.key});
 
   @override
   _AlbumCarouselWidgetState createState() => _AlbumCarouselWidgetState();
@@ -36,7 +36,8 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
     final secondLineAlbums = albums.skip(splitPoint).toList();
 
     if (albums.length % 2 != 0) {
-      secondLineAlbums.add(AlbumEntity(name: "", picturePath: [""]));
+      secondLineAlbums.add(AlbumEntity(
+          name: "", picturePath: ["assets/images/default_image.webp"], id: ''));
     }
 
     return SingleChildScrollView(
@@ -45,7 +46,7 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
       child: Column(
         children: [
           _buildAlbumsRow(firstLineAlbums),
-          const SizedBox(height: 20), // Espacement entre les lignes
+          const SizedBox(height: 20),
           _buildAlbumsRow(secondLineAlbums),
         ],
       ),
@@ -64,7 +65,11 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
         album.picturePath.isNotEmpty ? album.picturePath.first : '';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 2.0),
-      child: ContainerImageWidget(imageUrl: imageUrl, title: album.name),
+      child: ContainerImageWidget(
+        imageUrl: imageUrl,
+        title: album.name,
+        album: album, // Ajout de l'instance de l'album
+      ),
     );
   }
 }

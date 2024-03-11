@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:front/features/_global/presentation/widgets/app_bar.widget.dart';
-import 'package:front/features/homepage/presentation/widgets/triple_view_container.widget.dart';
-import 'package:provider/provider.dart';
+import 'package:front/features/home/presentation/widgets/triple_view_container.widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,7 +30,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              // Utilise TripleContainerWidget sans passer d'imageUrls
               AlbumCarouselWidget(),
               Padding(
                 padding: EdgeInsets.only(top: 40.0),
@@ -43,10 +41,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              // Utilise TripleContainerWidget sans passer d'imageUrls
               AlbumCarouselWidget(),
-              // Supprimé la seconde instance de TripleContainerWidget
-              // car elle n'est plus nécessaire avec l'approche actuelle.
             ],
           ),
         ),
