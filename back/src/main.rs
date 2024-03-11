@@ -2,7 +2,8 @@ use std::io;
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{
-    cookie, get, middleware::NormalizePath, post, web, App, HttpResponse, HttpServer, Responder,
+    cookie, get, middleware::ErrorHandlers, middleware::NormalizePath, post, web, App,
+    HttpResponse, HttpServer, Responder,
 };
 use anyhow::Context;
 use dotenv::dotenv;
@@ -14,6 +15,7 @@ use utoipa_swagger_ui::SwaggerUi;
 mod api;
 mod config;
 mod database;
+mod error_handler;
 mod log;
 mod openapi;
 mod schema;
@@ -60,6 +62,7 @@ async fn init() -> anyhow::Result<()> {
                 .cookie_secure(false)
                 .build(),
             )
+            .wrap(ErrorHandlers::new().default_handler(error_handler::json_error_handler))
             .service(hello)
             .service(echo)
             .service(web::scope("/api").configure(api::configure))
