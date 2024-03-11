@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:front/features/viewpictures/presentation/widgets/photo_viewer.widget.dart';
 
 class PhotoGridItem extends StatelessWidget {
-  final String imagePath;
   final List<String> allImagePaths;
+
+  final String imagePath;
 
   const PhotoGridItem({
     super.key,
     required this.imagePath,
     required this.allImagePaths,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
