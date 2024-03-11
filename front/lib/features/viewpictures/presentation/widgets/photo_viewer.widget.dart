@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 class PhotoViewer extends StatelessWidget {
-  final String imagePath;
+  final List<String> imagePaths;
+  final int initialIndex;
 
-  const PhotoViewer({super.key, required this.imagePath});
+  const PhotoViewer({Key? key, required this.imagePaths, this.initialIndex = 0})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -15,9 +17,15 @@ class PhotoViewer extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Expanded(
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.contain,
+              child: PageView.builder(
+                itemCount: imagePaths.length,
+                controller: PageController(initialPage: initialIndex),
+                itemBuilder: (context, index) {
+                  return Image.asset(
+                    imagePaths[index],
+                    fit: BoxFit.contain,
+                  );
+                },
               ),
             ),
             Row(
