@@ -46,6 +46,7 @@ class ViewPictures extends StatelessWidget {
           return PhotoGridItem(
             key: ValueKey(album.picturePath[index]),
             imagePath: album.picturePath[index],
+            allImagePaths: album.picturePath,
           );
         },
       ),

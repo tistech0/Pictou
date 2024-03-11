@@ -3,10 +3,12 @@ import 'package:front/features/viewpictures/presentation/widgets/photo_viewer.wi
 
 class PhotoGridItem extends StatelessWidget {
   final String imagePath;
+  final List<String> allImagePaths;
 
   const PhotoGridItem({
     Key? key,
     required this.imagePath,
+    required this.allImagePaths,
   }) : super(key: key);
 
   @override
@@ -21,9 +23,13 @@ class PhotoGridItem extends StatelessWidget {
   }
 
   void _showPhotoViewer(BuildContext context) {
+    final initialIndex = allImagePaths.indexOf(imagePath);
     showDialog(
       context: context,
-      builder: (BuildContext context) => PhotoViewer(imagePath: imagePath),
+      builder: (BuildContext context) => PhotoViewer(
+        imagePaths: allImagePaths,
+        initialIndex: initialIndex,
+      ),
     );
   }
 }
