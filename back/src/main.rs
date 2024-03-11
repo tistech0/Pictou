@@ -1,16 +1,20 @@
-use std::env::var;
 use std::io;
 
+use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{
-    get, middleware::NormalizePath, post, web, App, HttpResponse, HttpServer, Responder,
+    cookie, get, middleware::NormalizePath, post, web, App, HttpResponse, HttpServer, Responder,
 };
+use anyhow::Context;
 use dotenv::dotenv;
-use tokio_postgres::{Error, NoTls};
 use tracing::{info, warn};
 use tracing_actix_web::TracingLogger;
 
+mod config;
+mod database;
 mod log;
 mod schema;
+
+use crate::{config::AppConfiguration, database::Database};
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -23,61 +27,52 @@ async fn echo(req_body: String) -> impl Responder {
     HttpResponse::Ok().body(req_body)
 }
 
-async fn connect_to_db() -> Result<(), Error> {
-    dotenv().ok();
-    let host = var("POSTGRES_HOST").expect("PG_HOST not set in .env");
-    let user = var("POSTGRES_USER").expect("PG_USER not set in .env");
-    let password = var("POSTGRES_PASSWORD").expect("PG_PASSWORD not set in .env");
-    let dbname = var("POSTGRES_DB").expect("PG_DATABASE not set in .env");
-
-    let conn_string = format!(
-        "host={} user={} password={} dbname={}",
-        host, user, password, dbname
-    );
-    let (client, connection) = tokio_postgres::connect(&conn_string, NoTls).await?;
-
-    // The connection object performs the actual communication with the database,
-    // so spawn it off to run on its own.
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-
-    // Now we can execute a simple statement that just returns its parameter.
-    let rows = client.query("SELECT * FROM User", &[]).await?;
-
-    println!("{rows:?}");
-
-    Ok(())
-}
-
 async fn manual_hello() -> impl Responder {
     HttpResponse::Ok().body("Hey there!")
 }
 
-#[actix_web::main]
 #[tracing::instrument]
-async fn main() -> io::Result<()> {
+async fn init() -> anyhow::Result<()> {
     let _guard = log::init();
-    connect_to_db().await.expect("failed to connect to db");
-    dotenv().ok();
-    let port = var("PORT")
-        .expect("PORT not set in .env")
-        .as_str()
-        .parse::<u16>()
-        .expect("PORT is not a valid number");
-    let address = &*var("ADDRESS").expect("ADDRESS not set in .env");
-    let server = HttpServer::new(|| {
+
+    dotenv().context("failed to read environment from .env")?;
+
+    let app_cfg = web::Data::new(AppConfiguration::from_env()?);
+    let address = app_cfg.address.to_owned();
+    let port = app_cfg.port;
+    let database = web::Data::new(Database::new(&app_cfg)?);
+
+    let server = HttpServer::new(move || {
         App::new()
+            .app_data(app_cfg.clone())
+            .app_data(database.clone())
             .wrap(TracingLogger::default())
             .wrap(NormalizePath::trim())
+            .wrap(
+                SessionMiddleware::builder(
+                    CookieSessionStore::default(),
+                    cookie::Key::from(&[0; 64]),
+                )
+                .cookie_secure(false)
+                .build(),
+            )
             .service(hello)
             .service(echo)
             .route("/hey", web::get().to(manual_hello))
     })
-    .bind((address, port))?;
+    .bind((address.clone(), port))?;
 
     info!(address, port, "starting Pictou server");
-    server.run().await
+    server.run().await?;
+    info!(address, port, "server stopped");
+    Ok(())
+}
+
+#[actix_web::main]
+async fn main() -> io::Result<()> {
+    if let Err(err) = init().await {
+        eprintln!("{err:?}");
+        std::process::exit(1);
+    }
+    Ok(())
 }
