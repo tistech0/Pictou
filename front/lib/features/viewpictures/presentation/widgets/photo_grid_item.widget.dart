@@ -6,7 +6,7 @@ class PhotoGridItem extends StatelessWidget {
   final List<String> allImagePaths;
 
   const PhotoGridItem({
-    Key? key,
+    super.key,
     required this.imagePath,
     required this.allImagePaths,
   }) : super(key: key);

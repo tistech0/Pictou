@@ -6,6 +6,8 @@ import 'package:front/features/viewpictures/presentation/screens/viewpictures.sc
 import 'package:front/core/config/themeprovider.dart';
 import 'package:provider/provider.dart';
 
+import 'features/_global/presentation/widgets/splashscreen.widget.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -42,7 +44,8 @@ class MyApp extends StatelessWidget {
             ),
             themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
             routes: {
-              '/': (context) => const HomePage(),
+              '/': (context) => const SplashScreen(),
+              '/home': (context) => const HomePage(),
               '/view-picture': (context) => const ViewPictures(
                     albumId: '',
                   ),
