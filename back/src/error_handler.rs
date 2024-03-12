@@ -10,16 +10,19 @@ use futures::executor::block_on;
 use mime;
 use serde::{Deserialize, Serialize};
 use std::str::from_utf8;
+use utoipa::ToSchema;
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, ToSchema)]
 pub enum ApiErrorCode {
     Unknown,
     QueryPayloadError,
     PathError,
     NotFoundError,
+    UnauthorizedError,
+    ForbiddenError,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct APIError {
     http_status: u16,
     error_code: ApiErrorCode,
@@ -38,6 +41,48 @@ impl APIError {
             http_status: http_status.as_u16(),
             error_code: error_code,
             description: description.into(),
+        }
+    }
+
+    pub fn query_payload_error(description: &str) -> Self {
+        APIError::new(
+            StatusCode::BAD_REQUEST,
+            ApiErrorCode::QueryPayloadError,
+            description,
+        )
+    }
+
+    pub fn path_error(description: &str) -> Self {
+        APIError::new(
+            StatusCode::BAD_REQUEST,
+            ApiErrorCode::PathError,
+            description,
+        )
+    }
+
+    pub fn not_found_error(resource_name: &str) -> Self {
+        APIError {
+            http_status: StatusCode::NOT_FOUND.as_u16(),
+            error_code: ApiErrorCode::NotFoundError,
+            description: format!("{} not found", resource_name),
+        }
+    }
+
+    pub fn unauthorized_error() -> Self {
+        APIError {
+            http_status: StatusCode::UNAUTHORIZED.as_u16(),
+            error_code: ApiErrorCode::UnauthorizedError,
+            description: "Trying to access private resource with missing or invalid credentials"
+                .to_string(),
+        }
+    }
+
+    pub fn forbidden_error() -> Self {
+        APIError {
+            http_status: StatusCode::FORBIDDEN.as_u16(),
+            error_code: ApiErrorCode::ForbiddenError,
+            description: "Trying to access private resource with valid credentials but insufficient access rights"
+                .to_string(),
         }
     }
 }
@@ -123,4 +168,11 @@ pub fn json_error_handler<B: MessageBody>(
         error_code = ApiErrorCode::NotFoundError;
     }
     make_error_response(request, body_str.to_string(), error_code, status)
+}
+
+pub fn path_error_handler(
+    e: actix_web::error::PathError,
+    _req: &HttpRequest,
+) -> actix_web::error::Error {
+    APIError::path_error(&e.to_string()).into()
 }

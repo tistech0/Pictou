@@ -1,16 +1,10 @@
 use crate::api::images::ImageMetaData;
+use crate::api::PaginationQuery;
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 const CONTEXT_PATH: &str = "/albums";
-
-#[allow(dead_code)]
-#[derive(Deserialize)]
-pub struct PaginationQuery {
-    limit: Option<i32>,
-    offset: Option<i32>,
-}
 
 #[derive(Deserialize, Serialize, ToSchema)]
 pub struct AlbumPost {

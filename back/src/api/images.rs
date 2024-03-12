@@ -1,7 +1,9 @@
+use crate::api::{image_not_found_example, path_error_example, query_payload_error_example};
+use crate::error_handler::APIError;
 use actix_multipart::Multipart;
-use actix_web::{delete, get, http, patch, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, http, patch, post, web, Error, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
-use utoipa::{schema, ToSchema};
+use utoipa::ToSchema;
 
 const CONTEXT_PATH: &str = "/images";
 
@@ -37,7 +39,7 @@ pub struct ImagePatch {
 pub struct ImageMetaData {
     id: u32,
     owner_id: u32,
-    name: String,
+    caption: String,
     tags: Vec<String>,
     shared_with: Vec<String>,
     url: String,
@@ -47,10 +49,6 @@ pub struct ImageMetaData {
 pub struct ImagesMetaData {
     images: Vec<ImageMetaData>,
 }
-
-#[derive(ToSchema)]
-#[schema(value_type = String, format = Binary)]
-pub struct Binary(String);
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct ImageUploadResponse {
@@ -67,7 +65,14 @@ pub struct ImageUploadResponse {
         ("quality" = Option<ImageQuality>, Query, description="Image quality", example="Low")
     ),
     responses(
-        (status = 200, description = "Image retrieved successfully", body = Binary, content_type = "image/jpeg")
+        (status = StatusCode::OK, description = "Image retrieved successfully", body = Binary, content_type = "image/jpeg"),
+        (status = StatusCode::BAD_REQUEST, body = APIError, examples(
+            ("Invalid query parameters" = (value = json!(query_payload_error_example()))),
+            ("Invalid path parameters" = (value = json!(path_error_example())))), 
+            content_type = "application/json"
+        ),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = APIError, example = json!(image_not_found_example()), content_type = "application/json")
     ),
     tag="images"
 )]
@@ -79,7 +84,10 @@ pub async fn get_image(img_id: web::Path<u16>, query: web::Query<ImageQuery>) ->
         .body(Vec::new())
 }
 
-/// Get a list of images (metadata and url to download the image)
+/// Get the images owned by or shared with the user
+///
+/// This method returns the metadata of the images not the effective images. The client must make a request for each image independently.
+/// The list can be filtered by quality, and paginated.
 #[allow(unused_variables)]
 #[allow(unreachable_code)]
 #[utoipa::path(
@@ -90,14 +98,16 @@ pub async fn get_image(img_id: web::Path<u16>, query: web::Query<ImageQuery>) ->
         ("quality" = Option<ImageQuality>, Query, description="Image quality", example="Low")
     ),
     responses(
-        (status = 200, description = "Images retrieved successfully", body = ImagesMetaData, content_type = "application/json")
+        (status = StatusCode::OK, description = "Images retrieved successfully", body = ImagesMetaData, content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid query parameters", body = APIError, example=json!(query_payload_error_example()), content_type = "application/json"),
     ),
     tag="images"
 )]
 #[get("")]
-pub async fn get_images(query: web::Query<ImagesQuery>) -> impl Responder {
+pub async fn get_images(query: web::Query<ImagesQuery>) -> Result<impl Responder, Error> {
     todo!("Implement get_images method.");
-    HttpResponse::Ok().json(ImagesMetaData { images: vec![] })
+    Ok(web::Json(ImagesMetaData { images: vec![] }))
 }
 
 /// Upload an image
@@ -106,7 +116,8 @@ pub async fn get_images(query: web::Query<ImagesQuery>) -> impl Responder {
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     responses(
-        (status = 200, description = "Successfully uploaded", body = ImageUploadResponse)
+        (status = 200, description = "Successfully uploaded", body = ImageUploadResponse),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json")
     ),
     tag="images",
     request_body(
@@ -130,7 +141,11 @@ pub async fn upload_image(payload: Multipart) -> impl Responder {
         ("id" = u16, Path, description="Image to edit", example=1),
     ),
     responses(
-        (status = 200, description = "Successfully patched", body = ImageMetaData)
+        (status = StatusCode::OK, description = "Successfully patched", body = ImageMetaData),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = APIError, example=json!(path_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image (shared image)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = APIError, example = json!(image_not_found_example()), content_type = "application/json")
     ),
     tag="images",
     request_body(
@@ -145,7 +160,7 @@ pub async fn edit_image(img_id: web::Path<u16>, patch: web::Json<ImagePatch>) ->
     HttpResponse::Ok().json(ImageMetaData {
         id: 1,
         owner_id: 1,
-        name: "my_image".to_string(),
+        caption: "my_image".to_string(),
         tags: vec![],
         shared_with: vec![],
         url: "/images/1".to_string(),
@@ -161,7 +176,12 @@ pub async fn edit_image(img_id: web::Path<u16>, patch: web::Json<ImagePatch>) ->
         ("id" = u16, Path, description="Image to delete", example=1),
     ),
     responses(
-        (status = 204, description = "Successfully deleted")
+        (status = StatusCode::NO_CONTENT, description = "Successfully deleted"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = APIError, example=json!(path_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image (shared image)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = APIError, example = json!(image_not_found_example()), content_type = "application/json")
+    
     ),
     tag="images"
 )]
