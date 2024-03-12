@@ -1,3 +1,4 @@
+use crate::{api::json_payload_error_example, error_handler::APIError};
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -26,7 +27,8 @@ pub struct UserList {
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     responses(
-        (status = 200, description = "User's properties retrieved successfully", body = User, content_type = "application/json")
+        (status = StatusCode::OK, description = "User's properties retrieved successfully", body = User, content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users"
 )]
@@ -45,7 +47,8 @@ pub async fn get_self() -> impl Responder {
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     responses(
-        (status = 200, description = "Users retrieved successfully", body = UserList, content_type = "application/json")
+        (status = StatusCode::OK, description = "Users retrieved successfully", body = UserList, content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users"
 )]
@@ -61,7 +64,9 @@ pub async fn get_users() -> impl Responder {
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     responses(
-        (status = 200, description = "Successfully patched", body = User)
+        (status = StatusCode::OK, description = "Successfully patched", body = User),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid request data", body = APIError, example = json!(json_payload_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users",
     request_body(
@@ -79,7 +84,7 @@ pub async fn edit_self(patch: web::Json<UserPost>) -> impl Responder {
     })
 }
 
-/// Delete a user
+/// Delete the user account
 #[allow(unreachable_code)]
 #[allow(unused_variables)]
 #[utoipa::path(
@@ -88,12 +93,13 @@ pub async fn edit_self(patch: web::Json<UserPost>) -> impl Responder {
         ("id" = u16, Path, description="User to delete", example=1),
     ),
     responses(
-        (status = 204, description = "Successfully deleted")
+        (status = StautsCode::NO_CONTENT, description = "Successfully deleted"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users"
 )]
-#[delete("/{id}")]
-pub async fn delete_user(album_id: web::Path<u16>) -> impl Responder {
+#[delete("/self")]
+pub async fn delete_user() -> impl Responder {
     todo!("Implement delete_user method.");
     HttpResponse::NoContent().finish()
 }
