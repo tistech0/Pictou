@@ -16,6 +16,7 @@ use utoipa::ToSchema;
 pub enum ApiErrorCode {
     Unknown,
     QueryPayloadError,
+    JsonPayloadError,
     PathError,
     NotFoundError,
     UnauthorizedError,
@@ -48,6 +49,14 @@ impl APIError {
         APIError::new(
             StatusCode::BAD_REQUEST,
             ApiErrorCode::QueryPayloadError,
+            description,
+        )
+    }
+
+    pub fn json_payload_error(description: &str) -> Self {
+        APIError::new(
+            StatusCode::BAD_REQUEST,
+            ApiErrorCode::JsonPayloadError,
             description,
         )
     }
@@ -149,6 +158,14 @@ pub fn json_error_handler<B: MessageBody>(
                 request,
                 err.to_string(),
                 ApiErrorCode::PathError,
+                StatusCode::BAD_REQUEST,
+            );
+        }
+        if let Some(err) = error.as_error::<actix_web::error::JsonPayloadError>() {
+            return make_error_response(
+                request,
+                err.to_string(),
+                ApiErrorCode::JsonPayloadError,
                 StatusCode::BAD_REQUEST,
             );
         }
