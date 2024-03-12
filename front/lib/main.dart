@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
 import 'package:front/features/home/presentation/screens/homepage.screen.dart';
+import 'package:front/features/login/presentation/screens/login.screen.dart';
 import 'package:front/features/settings/presentation/screens/setting.screen.dart';
 import 'package:front/features/viewpictures/presentation/screens/viewpictures.screen.dart';
 import 'package:front/core/config/themeprovider.dart';
@@ -45,6 +46,7 @@ class MyApp extends StatelessWidget {
             themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
             routes: {
               '/': (context) => const SplashScreen(),
+              '/login': (context) => const LoginScreen(),
               '/home': (context) => const HomePage(),
               '/view-picture': (context) => const ViewPictures(
                     albumId: '',
