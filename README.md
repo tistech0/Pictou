@@ -26,3 +26,16 @@ direnv allow
 # Or
 nix-shell
 ```
+
+### Migrations
+For migrations, we use `diesel` as the ORM.
+```sh
+cargo install diesel_cli --no-default-features --features postgres
+diesel setup # need to have a .env file with the DATABASE_URL set
+diesel migration generate migration_name # to generate a new migration
+diesel migration run # to run the migrations
+diesel migration revert # to revert the last migration
+diesel migration redo # to revert and re-run the last migrationDiesel
+```
+
+
