@@ -1,5 +1,10 @@
 use crate::api::images::ImageMetaData;
-use crate::api::PaginationQuery;
+use crate::api::{
+    album_not_found_example, json_payload_error_example_missing_field, path_error_example,
+    query_payload_error_example,
+};
+use crate::api::{json_payload_error_example, PaginationQuery};
+use crate::error_handler::APIError;
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -38,7 +43,10 @@ pub struct AlbumList {
         ("id" = u16, Path, description="Identifier of the album", example=1)
     ),
     responses(
-        (status = 200, description = "Album retrieved successfully", body = Album, content_type = "application/json")
+        (status = StatusCode::OK, description = "Album retrieved successfully", body = Album, content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = APIError, example = json!(path_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Album not found (or user is forbidden to see it)", body = APIError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
     tag="albums"
 )]
@@ -65,7 +73,9 @@ pub async fn get_album(album_id: web::Path<u16>) -> impl Responder {
         ("offset" = Option<u16>, Query, description="Offset of the query in the albums list to return", example=0),
     ),
     responses(
-        (status = 200, description = "Albums retrieved successfully", body = AlbumList, content_type = "application/json")
+        (status = StatusCode::OK, description = "Albums retrieved successfully", body = AlbumList, content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid query parameters", body = APIError, example=json!(query_payload_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json")
     ),
     tag="albums"
 )]
@@ -81,7 +91,9 @@ pub async fn get_albums(query: web::Query<PaginationQuery>) -> impl Responder {
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     responses(
-        (status = 200, description = "Successfully created", body = Album, content_type = "application/json")
+        (status = StatusCode::OK, description = "Successfully created", body = Album, content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid request data", body = APIError, example = json!(json_payload_error_example_missing_field()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json")
     ),
     tag="albums",
     request_body(
@@ -112,7 +124,15 @@ pub async fn create_album(album: web::Json<AlbumPost>) -> impl Responder {
         ("id" = u16, Path, description="Album to edit", example=1),
     ),
     responses(
-        (status = 200, description = "Successfully patched", body = Album)
+        (status = StatusCode::OK, description = "Successfully patched", body = Album),
+        (status = StatusCode::BAD_REQUEST, body = APIError, examples(
+            ("Invalid path parameters" = (value = json!(path_error_example()))),
+            ("Invalid payload" = (value = json!(json_payload_error_example())))), 
+            content_type = "application/json"
+        ),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the album (shared album)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Album not found (or user is forbidden to see it)", body = APIError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
     tag="albums",
     request_body(
@@ -143,7 +163,11 @@ pub async fn edit_album(album_id: web::Path<u16>, patch: web::Json<AlbumPost>) -
         ("id" = u16, Path, description="Album to delete", example=1),
     ),
     responses(
-        (status = 204, description = "Successfully deleted")
+        (status = StatusCode::NO_CONTENT, description = "Successfully deleted"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = APIError, example=json!(path_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the album (shared album)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Album not found (or user is forbidden to see it)", body = APIError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
     tag="albums"
 )]
@@ -163,7 +187,11 @@ pub async fn delete_album(album_id: web::Path<u16>) -> impl Responder {
         ("image_id" = u16, Path, description="Image to add", example=1),
     ),
     responses(
-        (status = 200, description = "Successfully added", body = Album, content_type = "application/json")
+        (status = StatusCode::OK, description = "Successfully added", body = Album, content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = APIError, example =json!(path_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image/album (shared image/album)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Album or image not found (or user is forbidden to see it)", body = APIError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
     tag="albums"
 )]
@@ -190,7 +218,11 @@ pub async fn add_image_to_album(path: web::Path<(u16, u16)>) -> impl Responder {
         ("image_id" = u16, Path, description="Image to remove", example=1),
     ),
     responses(
-        (status = 200, description = "Successfully removed", body = Album, content_type = "application/json")
+        (status = StatusCode::OK, description = "Successfully added", body = Album, content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = APIError, example =json!(path_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image/album (shared image/album)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
+        (status = StatusCode::NOT_FOUND, description = "Album or image not found (or user is forbidden to see it)", body = APIError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
     tag="albums"
 )]

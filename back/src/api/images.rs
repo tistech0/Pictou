@@ -1,4 +1,4 @@
-use crate::api::{image_not_found_example, path_error_example, query_payload_error_example};
+use crate::api::{image_not_found_example, path_error_example, query_payload_error_example, json_payload_error_example};
 use crate::error_handler::APIError;
 use actix_multipart::Multipart;
 use actix_web::{delete, get, http, patch, post, web, Error, HttpResponse, Responder};
@@ -142,7 +142,11 @@ pub async fn upload_image(payload: Multipart) -> impl Responder {
     ),
     responses(
         (status = StatusCode::OK, description = "Successfully patched", body = ImageMetaData),
-        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = APIError, example=json!(path_error_example()), content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, body = APIError, examples(
+            ("Invalid path parameters" = (value = json!(path_error_example()))),
+            ("Invalid payload" = (value = json!(json_payload_error_example())))), 
+            content_type = "application/json"
+        ),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
         (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image (shared image)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = APIError, example = json!(image_not_found_example()), content_type = "application/json")
