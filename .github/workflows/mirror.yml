@@ -2,9 +2,7 @@ name: mirror Ci
 
 on:
   push:
-    branches: [main, dev]
-  pull_request:
-    branches: [main, dev]
+    branches: [main]
 
 jobs:
   mirror:
