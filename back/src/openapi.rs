@@ -1,11 +1,13 @@
 use utoipa::OpenApi;
 use utoipa_auto_discovery::utoipa_auto_discovery;
 
+use crate::api::Binary;
 use crate::api::albums::{Album, AlbumList, AlbumPost};
 use crate::api::images::{
-    Binary, ImageMetaData, ImagePatch, ImageQuality, ImageUploadResponse, ImagesMetaData,
+    ImageMetaData, ImagePatch, ImageQuality, ImageUploadResponse, ImagesMetaData,
 };
 use crate::api::users::{User, UserList, UserPost};
+use crate::error_handler::{APIError, ApiErrorCode};
 
 #[utoipa_auto_discovery(
     paths = "( crate::api::images => ./src/api/images.rs ); 
@@ -25,7 +27,8 @@ use crate::api::users::{User, UserList, UserPost};
     components(
         schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImageMetaData, ImagesMetaData, 
             Album, AlbumList, AlbumPost, 
-            User, UserList, UserPost)
+            User, UserList, UserPost,
+            ApiErrorCode, APIError),
     ),
     tags(
         (name = "images", description = "Images management endpoints."),

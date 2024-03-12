@@ -63,6 +63,10 @@ async fn init() -> anyhow::Result<()> {
                 .build(),
             )
             .wrap(ErrorHandlers::new().default_handler(error_handler::json_error_handler))
+            .app_data(
+                actix_web::web::PathConfig::default()
+                    .error_handler(error_handler::path_error_handler),
+            )
             .service(hello)
             .service(echo)
             .service(web::scope("/api").configure(api::configure))
