@@ -37,7 +37,7 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
 
     if (albums.length % 2 != 0) {
       secondLineAlbums.add(AlbumEntity(
-          name: "", picturePath: ["assets/images/default_image.webp"], id: ''));
+          name: "", picturePath: ["assets/images/default_image.jpeg"], id: ''));
     }
 
     return SingleChildScrollView(

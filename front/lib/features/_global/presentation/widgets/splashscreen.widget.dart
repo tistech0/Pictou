@@ -38,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     borderRadius: BorderRadius.circular(
                         20.0), // Arrondir les angles de l'image
                     child: Image.asset(
-                      'assets/images/default_image.webp',
+                      'assets/images/default_image.jpeg',
                       width: 200,
                       height: 200,
                     ),
