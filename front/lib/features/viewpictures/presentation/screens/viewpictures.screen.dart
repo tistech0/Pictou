@@ -21,9 +21,7 @@ class ViewPictures extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () {
-              //share album with other users
-            },
+            onPressed: () {},
           ),
           IconButton(
             icon: const Icon(
@@ -50,9 +48,7 @@ class ViewPictures extends StatelessWidget {
           );
         },
       ),
-      bottomNavigationBar: BottomBarWidget(
-        onImportPressed: () {},
-      ),
+      bottomNavigationBar: BottomBarWidget(),
     );
   }
 }

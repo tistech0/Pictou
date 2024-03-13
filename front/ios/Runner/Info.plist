@@ -47,6 +47,10 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
     <string>Explanation why app needs access to the photo library.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Need camera access for capturing pictures</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Need photo library access for selecting pictures</string>
 
 </dict>
 </plist>

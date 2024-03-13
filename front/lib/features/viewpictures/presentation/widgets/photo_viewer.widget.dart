@@ -50,9 +50,7 @@ class PhotoViewer extends StatelessWidget {
               right: 10,
               child: IconButton(
                 icon: Icon(Icons.info_outline, color: Colors.white),
-                onPressed: () {
-                  // Action quand l'icône est pressée
-                },
+                onPressed: () {},
               ),
             ),
           ],
