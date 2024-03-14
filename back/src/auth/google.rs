@@ -1,6 +1,5 @@
 use actix_session::Session;
 use actix_web::{
-    error::ErrorForbidden,
     error::{Error, ErrorUnauthorized},
     get,
     web::Query,
@@ -12,10 +11,13 @@ use oauth2::{
     basic::BasicClient, AuthUrl, AuthorizationCode, CsrfToken, PkceCodeChallenge, RedirectUrl,
     RequestTokenError, TokenResponse, TokenUrl,
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use tracing::{error, info, warn};
 
-use crate::config::AppConfiguration;
+use crate::{
+    auth::oauth2_client::{self, OAuth2AuthorizationResponse},
+    config::AppConfiguration,
+};
 
 /// Exposes all HTTP routes of this module.
 #[tracing::instrument(skip(service_cfg, app_cfg))]
@@ -96,12 +98,6 @@ async fn index(client: web::Data<BasicClient>, session: Session) -> Result<HttpR
         .finish())
 }
 
-#[derive(Deserialize)]
-struct CallbackQueryParams {
-    state: String,
-    code: String,
-}
-
 #[derive(Serialize)]
 struct CallbackResponse {
     access_token: String,
@@ -115,19 +111,14 @@ struct CallbackResponse {
 async fn callback(
     client: web::Data<BasicClient>,
     session: Session,
-    query: Query<CallbackQueryParams>,
+    query: Query<OAuth2AuthorizationResponse>,
 ) -> Result<HttpResponse, Error> {
     info!("Received callback request for Google OAuth2 authorization");
-
-    let CallbackQueryParams { state, code } = query.into_inner();
 
     let saved_state: String = read_from_session(&session, STATE_TOKEN_SESSION_KEY)?;
     let pkce_secret: String = read_from_session(&session, PKCE_SECRET_SESSION_KEY)?;
 
-    if state != saved_state {
-        // auth provider sent a different token than expected, CSRF attack?
-        return Err(ErrorForbidden("invalid state token"));
-    }
+    let code = oauth2_client::handle_authorization_response(query.into_inner(), &saved_state)?;
 
     // Retrieve the PKCE verifier from the session
     let pkce_verifier = oauth2::PkceCodeVerifier::new(pkce_secret.clone());
