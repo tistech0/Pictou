@@ -6,7 +6,7 @@ use oauth2::http::StatusCode;
 use serde::Serialize;
 
 /// Generic JSON-based error response.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct JsonHttpError {
     #[serde(skip_serializing)]
     status: StatusCode,
@@ -25,6 +25,14 @@ impl JsonHttpError {
 
     pub fn unauthorized(code: impl ToString, message: impl ToString) -> Self {
         Self::new(StatusCode::UNAUTHORIZED, code, message)
+    }
+
+    pub fn forbidden(code: impl ToString, message: impl ToString) -> Self {
+        Self::new(StatusCode::FORBIDDEN, code, message)
+    }
+
+    pub fn internal_server_error(code: impl ToString, message: impl ToString) -> Self {
+        Self::new(StatusCode::INTERNAL_SERVER_ERROR, code, message)
     }
 }
 

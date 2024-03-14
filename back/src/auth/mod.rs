@@ -25,6 +25,7 @@ use crate::{
 };
 
 pub mod google;
+mod oauth2_client;
 
 /// Exposes all HTTP routes of this module.
 pub fn routes(service_cfg: &mut ServiceConfig, app_cfg: web::Data<AppConfiguration>) {
