@@ -5,6 +5,7 @@ pkgs.mkShell {
   buildInputs = with pkgs; [
     pre-commit
     diesel-cli
+    postgresql
   ];
 
   shellHook = ''

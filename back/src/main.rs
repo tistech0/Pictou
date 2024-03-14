@@ -16,6 +16,8 @@ mod auth;
 mod api;
 mod config;
 mod database;
+// FIXME: remove when OpenAPI-compatible error handling is merged
+mod error;
 mod error_handler;
 mod log;
 mod openapi;
@@ -29,6 +31,7 @@ async fn hello() -> impl Responder {
 }
 
 #[post("/echo")]
+#[tracing::instrument]
 async fn echo(req_body: String) -> impl Responder {
     warn!("somebody echoed us!");
     HttpResponse::Ok().body(req_body)
