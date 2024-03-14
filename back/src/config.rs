@@ -11,6 +11,7 @@ pub struct AppConfiguration {
     pub address: String,
     pub port: u16,
     pub session_key: String,
+    pub jwt_secret: Box<[u8]>,
     pub google_client_id: Option<oauth2::ClientId>,
     pub google_client_secret: Option<oauth2::ClientSecret>,
 }
@@ -28,6 +29,7 @@ impl AppConfiguration {
             address: env::var("ADDRESS")?,
             port: env::var("PORT")?.parse()?,
             session_key: env::var("SESSION_KEY")?,
+            jwt_secret: env::var("JWT_SECRET").map(|s| s.into_bytes().into())?,
             google_client_id: env::var("GOOGLE_CLIENT_ID").ok().map(oauth2::ClientId::new),
             google_client_secret: env::var("GOOGLE_CLIENT_SECRET")
                 .ok()

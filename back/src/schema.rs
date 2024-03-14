@@ -1,11 +1,5 @@
 // @generated automatically by Diesel CLI.
 
-pub mod sql_types {
-    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "auth_type"))]
-    pub struct AuthType;
-}
-
 diesel::table! {
     album_images (id) {
         id -> Uuid,
@@ -21,6 +15,18 @@ diesel::table! {
         #[max_length = 255]
         name -> Varchar,
         tags -> Array<Nullable<Text>>,
+    }
+}
+
+diesel::table! {
+    new_users (id) {
+        id -> Uuid,
+        #[max_length = 255]
+        email -> Varchar,
+        refresh_token -> Nullable<Text>,
+        refresh_token_exp -> Timestamptz,
+        google_refresh_token -> Nullable<Text>,
+        google_refresh_token_exp -> Nullable<Timestamptz>,
     }
 }
 
@@ -53,19 +59,14 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::AuthType;
-
     users (id) {
         id -> Uuid,
         #[max_length = 255]
         email -> Varchar,
-        #[max_length = 255]
-        refresh_token -> Varchar,
-        auth_type -> AuthType,
-        token_exp -> Timestamp,
-        #[max_length = 255]
-        oauth_token -> Nullable<Varchar>,
+        refresh_token -> Nullable<Text>,
+        refresh_token_exp -> Timestamptz,
+        google_refresh_token -> Nullable<Text>,
+        google_refresh_token_exp -> Nullable<Timestamptz>,
     }
 }
 
@@ -80,6 +81,7 @@ diesel::joinable!(user_images -> users (user_id));
 diesel::allow_tables_to_appear_in_same_query!(
     album_images,
     albums,
+    new_users,
     shared_albums,
     stored_images,
     user_images,
