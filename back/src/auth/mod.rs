@@ -1,7 +1,4 @@
-use std::{
-    error::Error as StdError,
-    time::{Duration, UNIX_EPOCH},
-};
+use std::error::Error as StdError;
 
 use actix_web::{
     dev::Payload,
@@ -15,6 +12,7 @@ use futures_util::future::LocalBoxFuture;
 use jsonwebtoken as jwt;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -35,7 +33,8 @@ pub fn routes(service_cfg: &mut ServiceConfig, app_cfg: web::Data<AppConfigurati
     // cfg.service(web::scope("/google").configure(google::routes));
 }
 
-const ACCESS_TOKEN_LIFETIME: Duration = Duration::from_secs(60 * 5);
+const REFRESH_TOKEN_LIFETIME: Duration = Duration::days(30);
+const ACCESS_TOKEN_LIFETIME: Duration = Duration::minutes(3);
 
 /// Allows the user to request another access token after it expired.
 /// This route checks the opaque refresh token against the database before granting (or not) the new access token.
@@ -55,7 +54,7 @@ async fn refresh_token(
     // - user_id matches the one in the request
     // - refresh_token matches the one in the request
     // - refresh_token_exp is not expired
-    let found_email: Option<String> = database::open(db, move |conn| {
+    let found_email: Option<String> = database::open(db.clone(), move |conn| {
         use crate::schema::users;
         use diesel::dsl::now;
         use diesel::prelude::*;
@@ -78,14 +77,32 @@ async fn refresh_token(
         JsonHttpError::unauthorized("INVALID_CREDENTIALS", "invalid or expired credentials")
     })?;
 
-    info!(%email, %user_id, lifetime_secs = ACCESS_TOKEN_LIFETIME.as_secs(), "refreshing access token of user");
+    info!(%email, %user_id, lifetime_secs = ACCESS_TOKEN_LIFETIME.whole_seconds(), "refreshing access token of user");
     let access_token =
         AuthContext::encode_jwt(user_id, ACCESS_TOKEN_LIFETIME, &app_cfg.jwt_secret)?;
+
+    // Regenerate a new refresh token and update the database
+    let new_refresh_token = database::open(db, move |conn| {
+        use crate::schema::users;
+        use diesel::prelude::*;
+
+        let new_refresh_token = AuthContext::generate_refresh_token();
+        diesel::update(users::table.filter(users::id.eq(user_id)))
+            .set((
+                users::refresh_token.eq(&new_refresh_token),
+                users::refresh_token_exp.eq(OffsetDateTime::now_utc() + REFRESH_TOKEN_LIFETIME),
+            ))
+            .execute(conn)?;
+
+        Ok(new_refresh_token)
+    })
+    .await?;
 
     Ok(HttpResponse::Ok().json(RefreshTokenResponse {
         email,
         user_id,
         access_token,
+        refresh_token: new_refresh_token,
     }))
 }
 
@@ -101,6 +118,8 @@ struct RefreshTokenResponse {
     email: String,
     user_id: Uuid,
     access_token: String,
+    /// New refresh token, the old one is invalidated
+    refresh_token: String,
 }
 
 /// When present, this extractor ensures that the annotated route will require authentication.
@@ -168,18 +187,10 @@ impl AuthContext {
         let header = jwt::Header::new(jwt::Algorithm::HS256);
         let key = jwt::EncodingKey::from_secret(secret);
 
-        let elapsed_since_epoch = UNIX_EPOCH.elapsed().map_err(|error| {
-            error!(
-                error = &error as &dyn StdError,
-                "failed to read system time"
-            );
-            ErrorInternalServerError("")
-        })?;
-
         let claims = AuthenticationToken {
             aud: "pictou".to_owned(),
             iss: "pictou".to_owned(),
-            exp: (elapsed_since_epoch + max_life).as_secs(),
+            exp: (OffsetDateTime::now_utc() + max_life).unix_timestamp(),
             sub: subject,
         };
 
@@ -187,6 +198,18 @@ impl AuthContext {
             error!(error = &error as &dyn StdError, "failed to encode JWT");
             ErrorInternalServerError("")
         })
+    }
+
+    /// Generates a new random refresh token.
+    fn generate_refresh_token() -> String {
+        use base64::prelude::*;
+        use rand::prelude::*;
+
+        let mut rng = rand::thread_rng();
+        let mut buf = [0u8; 128];
+        rng.fill_bytes(&mut buf);
+
+        BASE64_STANDARD.encode(buf)
     }
 }
 
@@ -207,7 +230,7 @@ static JWT_VALIDATION: Lazy<jwt::Validation> = Lazy::new(|| {
 struct AuthenticationToken {
     aud: String,
     iss: String,
-    exp: u64,
+    exp: i64,
     sub: Uuid,
 }
 
@@ -318,7 +341,7 @@ mod tests {
 
         let encodded = AuthContext::encode_jwt(
             Uuid::parse_str("f09d493d-a117-465d-84de-96fb4469dd40").unwrap(),
-            Duration::from_secs(60),
+            Duration::seconds(60),
             secret,
         )
         .expect("failed to encode token");
@@ -332,6 +355,16 @@ mod tests {
         );
         assert_eq!(decoded.claims.aud, "pictou");
         assert_eq!(decoded.claims.iss, "pictou");
+    }
+
+    #[test]
+    fn test_generate_refresh_token() {
+        let token_a = AuthContext::generate_refresh_token();
+        let token_b = AuthContext::generate_refresh_token();
+
+        assert!(token_a.len() >= 128);
+        assert!(token_b.len() >= 128);
+        assert_ne!(token_a, token_b);
     }
 
     #[traced_test]

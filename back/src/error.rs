@@ -1,5 +1,7 @@
-use std::fmt;
-use std::fmt::Display;
+use std::{
+    error::Error as StdError,
+    fmt::{self, Display},
+};
 
 use actix_web::{HttpResponse, ResponseError};
 use oauth2::http::StatusCode;
@@ -51,3 +53,5 @@ impl ResponseError for JsonHttpError {
         HttpResponse::build(self.status).json(self)
     }
 }
+
+impl StdError for JsonHttpError {}
