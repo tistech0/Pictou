@@ -8,6 +8,7 @@ use actix_web::{
     web::{self, ServiceConfig},
     Error as ActixError, FromRequest, HttpRequest, HttpResponse, Result as ActixResult,
 };
+use diesel::{Queryable, Selectable};
 use futures_util::future::LocalBoxFuture;
 use jsonwebtoken as jwt;
 use once_cell::sync::Lazy;
@@ -101,31 +102,28 @@ async fn refresh_token(
     })?;
 
     info!(%email, %user_id, lifetime_secs = ACCESS_TOKEN_LIFETIME.whole_seconds(), "refreshing access token of user");
-    let access_token =
-        AuthContext::encode_jwt(user_id, ACCESS_TOKEN_LIFETIME, &app_cfg.jwt_secret)?;
+    let access_token_exp = OffsetDateTime::now_utc() + ACCESS_TOKEN_LIFETIME;
+    let access_token = AuthContext::encode_jwt(user_id, access_token_exp, &app_cfg.jwt_secret)?;
 
     // Regenerate a new refresh token and update the database
-    let new_refresh_token = database::open(db, move |conn| {
+    let user_info = database::open(db, move |conn| {
         use crate::schema::users;
         use diesel::prelude::*;
 
-        let new_refresh_token = AuthContext::generate_refresh_token();
-        diesel::update(users::table.filter(users::id.eq(user_id)))
+        Ok(diesel::update(users::table.filter(users::id.eq(user_id)))
             .set((
-                users::refresh_token.eq(&new_refresh_token),
+                users::refresh_token.eq(&AuthContext::generate_refresh_token()),
                 users::refresh_token_exp.eq(OffsetDateTime::now_utc() + REFRESH_TOKEN_LIFETIME),
             ))
-            .execute(conn)?;
-
-        Ok(new_refresh_token)
+            .returning(PersistedUserInfo::as_returning())
+            .get_result(conn)?)
     })
     .await?;
 
-    Ok(HttpResponse::Ok().json(RefreshTokenResponse {
-        email,
-        user_id,
+    Ok(HttpResponse::Ok().json(AuthenticationResponse {
+        user: user_info,
         access_token,
-        refresh_token: new_refresh_token,
+        access_token_exp,
     }))
 }
 
@@ -137,12 +135,24 @@ struct RefreshTokenParams {
 }
 
 #[derive(Debug, Serialize)]
-struct RefreshTokenResponse {
-    email: String,
-    user_id: Uuid,
+struct AuthenticationResponse {
+    #[serde(flatten)]
+    user: PersistedUserInfo,
     access_token: String,
-    /// New refresh token, the old one is invalidated
-    refresh_token: String,
+    access_token_exp: OffsetDateTime,
+}
+
+#[derive(Debug, Serialize, Selectable, Queryable)]
+#[diesel(table_name = crate::schema::users)]
+struct PersistedUserInfo {
+    #[diesel(column_name = "id")]
+    user_id: Uuid,
+    email: String,
+    refresh_token: Option<String>,
+    refresh_token_exp: OffsetDateTime,
+    name: Option<String>,
+    given_name: Option<String>,
+    family_name: Option<String>,
 }
 
 /// When present, this extractor ensures that the annotated route will require authentication.
@@ -206,14 +216,14 @@ impl AuthContext {
     }
 
     #[tracing::instrument(skip(secret))]
-    fn encode_jwt(subject: Uuid, max_life: Duration, secret: &[u8]) -> ActixResult<String> {
+    fn encode_jwt(subject: Uuid, expires_at: OffsetDateTime, secret: &[u8]) -> ActixResult<String> {
         let header = jwt::Header::new(jwt::Algorithm::HS256);
         let key = jwt::EncodingKey::from_secret(secret);
 
         let claims = AuthenticationToken {
             aud: "pictou".to_owned(),
             iss: "pictou".to_owned(),
-            exp: (OffsetDateTime::now_utc() + max_life).unix_timestamp(),
+            exp: expires_at.unix_timestamp(),
             sub: subject,
         };
 
@@ -362,9 +372,10 @@ mod tests {
     fn test_encode_decode_jwt() {
         let secret = b"secret";
 
+        let expires_at = OffsetDateTime::now_utc() + Duration::seconds(60);
         let encodded = AuthContext::encode_jwt(
             Uuid::parse_str("f09d493d-a117-465d-84de-96fb4469dd40").unwrap(),
-            Duration::seconds(60),
+            expires_at,
             secret,
         )
         .expect("failed to encode token");
@@ -378,6 +389,7 @@ mod tests {
         );
         assert_eq!(decoded.claims.aud, "pictou");
         assert_eq!(decoded.claims.iss, "pictou");
+        assert_eq!(decoded.claims.exp, expires_at.unix_timestamp());
     }
 
     #[test]

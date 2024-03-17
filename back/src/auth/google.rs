@@ -24,9 +24,10 @@ use tracing::info;
 use crate::{
     auth::oauth2_client::{self, OAuth2AuthorizationResponse, UserInfoRequest},
     config::AppConfiguration,
+    database::Database,
 };
 
-use super::oauth2_client::OAuth2Client;
+use super::oauth2_client::{ClientType, OAuth2Client};
 
 /// Exposes all HTTP routes of this module.
 #[tracing::instrument(skip_all)]
@@ -51,9 +52,18 @@ async fn callback(
     client: web::Data<GoogleOAuth2Client>,
     session: Session,
     query: Query<OAuth2AuthorizationResponse>,
+    db: web::Data<Database>,
+    app_cfg: web::Data<AppConfiguration>,
 ) -> Result<HttpResponse, Error> {
     info!("Received callback request for Google OAuth2 authorization");
-    oauth2_client::finish_authorization(client.as_ref(), query.into_inner(), session).await
+    oauth2_client::finish_authorization(
+        client.as_ref(),
+        query.into_inner(),
+        session,
+        db.into_inner(),
+        &app_cfg.jwt_secret,
+    )
+    .await
 }
 
 pub struct GoogleOAuth2Client {
@@ -110,6 +120,10 @@ impl GoogleOAuth2Client {
 }
 
 impl OAuth2Client for GoogleOAuth2Client {
+    fn client_type(&self) -> ClientType {
+        ClientType::Google
+    }
+
     fn new_authorization_request(&self, pkce_challenge: PkceCodeChallenge) -> AuthorizationRequest {
         self.client
             .authorize_url(CsrfToken::new_random)
@@ -143,8 +157,8 @@ impl Debug for GoogleOAuth2Client {
 
 /// Represents the OpenID Connect discovery document with a Google twist.
 ///
-/// OpenID spec: https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
-/// Google's discovery document: https://accounts.google.com/.well-known/openid-configuration
+/// OpenID spec: `https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata`
+/// Google's discovery document: `https://accounts.google.com/.well-known/openid-configuration`
 #[derive(Deserialize)]
 struct GooogleOpenIdConfiguration {
     issuer: String,

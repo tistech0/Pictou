@@ -23,7 +23,7 @@ mod log;
 mod openapi;
 mod schema;
 
-use crate::{config::AppConfiguration, database::Database};
+use crate::{auth::AuthContext, config::AppConfiguration, database::Database};
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -35,6 +35,12 @@ async fn hello() -> impl Responder {
 async fn echo(req_body: String) -> impl Responder {
     warn!("somebody echoed us!");
     HttpResponse::Ok().body(req_body)
+}
+
+#[get("/auth-only")]
+#[tracing::instrument]
+async fn auth_only(auth: AuthContext) -> impl Responder {
+    HttpResponse::Ok().body(format!("You are authorized as user ID {}!", auth.user_id))
 }
 
 async fn manual_hello() -> impl Responder {
@@ -80,6 +86,7 @@ async fn init() -> anyhow::Result<()> {
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
             )
+            .service(auth_only)
             .configure(|cfg| auth::routes(&auth_clients, cfg))
             .route("/hey", web::get().to(manual_hello))
     })

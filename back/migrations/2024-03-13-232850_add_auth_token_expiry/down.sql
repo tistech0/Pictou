@@ -1,28 +1,27 @@
 comment on column public.users.refresh_token is null;
 
 alter table public.users
-    alter column refresh_token type varchar(255) using refresh_token::varchar(255);
+    alter column refresh_token type varchar(255);
 
 alter table public.users
     alter column refresh_token set not null;
 
-alter table public.users
-    add auth_type auth_type not null;
+update public.users
+    set auth_type = 'google'::auth_type where auth_type is null;
 
 alter table public.users
-    drop column refresh_token_exp;
+    alter column auth_type set not null;
 
 alter table public.users
-    add token_exp timestamp not null;
+    rename column refresh_token_exp to token_exp;
 
 alter table public.users
-    drop column google_refresh_token;
+    alter column token_exp drop default;
 
 alter table public.users
-    add oauth_token varchar(255);
-
-alter table public.users
-    drop column google_refresh_token_exp;
+    alter column oauth_token type varchar(255);
 
 alter table public.users
     drop constraint users_pk;
+
+-- Intentionally not droping name, given_name, and family_name columns

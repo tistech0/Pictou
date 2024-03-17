@@ -1,23 +1,41 @@
 //! Common utilities for OAuth2 clients.
 
-use std::{borrow::Cow, error::Error as StdError, fmt::Debug};
+use std::{borrow::Cow, error::Error as StdError, fmt::Debug, sync::Arc};
 
 use actix_session::Session;
 use actix_web::{
-    error::{ErrorUnauthorized, Result as ActixResult},
+    error::{Error as ActixError, ErrorUnauthorized, Result as ActixResult},
     HttpResponse,
 };
+use diesel::{prelude::Insertable, query_builder::AsChangeset};
+use diesel_derive_enum::DbEnum;
 use oauth2::{
     basic::{BasicErrorResponse, BasicTokenResponse, BasicTokenType},
     AccessToken, AuthorizationCode, AuthorizationRequest, CodeTokenRequest, PkceCodeChallenge,
     RequestTokenError, TokenResponse,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use time::OffsetDateTime;
 use tracing::{error, info, warn};
 
-use crate::error::JsonHttpError;
+use crate::{
+    auth::{
+        AuthContext, AuthenticationResponse, PersistedUserInfo, ACCESS_TOKEN_LIFETIME,
+        REFRESH_TOKEN_LIFETIME,
+    },
+    database::{self, Database, DatabaseError},
+    error::JsonHttpError,
+};
+
+#[derive(DbEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[ExistingTypePath = "crate::schema::sql_types::AuthType"]
+pub enum ClientType {
+    Google,
+}
 
 pub trait OAuth2Client {
+    fn client_type(&self) -> ClientType;
+
     fn new_authorization_request(&self, pkce_challenge: PkceCodeChallenge) -> AuthorizationRequest;
 
     fn new_code_token_request(
@@ -39,7 +57,7 @@ struct CallbackResponse {
 
 /// Represent the response sent by OAuth2 servers as query parameters.
 ///
-/// See [](https://www.oauth.com/oauth2-servers/authorization/the-authorization-response).
+/// See `https://www.oauth.com/oauth2-servers/authorization/the-authorization-response`.
 #[derive(Debug, Deserialize)]
 pub struct OAuth2AuthorizationResponse {
     code: Option<AuthorizationCode>,
@@ -74,11 +92,13 @@ where
 
 /// Finishes the OAuth2 authorization process by exchanging the authorization code for an access token.
 /// Called by the OAuth2 provider after the user has authorized the application.
-#[tracing::instrument(skip(response, session))]
+#[tracing::instrument(skip(response, session, db, jwt_secret))]
 pub async fn finish_authorization<C>(
     client: &C,
     response: OAuth2AuthorizationResponse,
     session: Session,
+    db: Arc<Database>,
+    jwt_secret: &[u8],
 ) -> ActixResult<HttpResponse>
 where
     C: OAuth2Client + Debug + ?Sized,
@@ -90,13 +110,73 @@ where
     let token_result = fetch_tokens(client, pkce_secret, code).await?;
     let user_info = fetch_user_info(client, token_result.access_token()).await?;
 
-    info!(?user_info, "user info fetched");
+    let email = user_info.email.clone().ok_or_else(|| {
+        error!("missing email in user info response");
+        JsonHttpError::internal_server_error("OAUTH2_PROVIDER_ERROR", "internal error")
+    })?;
+    let auth_type = client.client_type();
+    let refresh_token = AuthContext::generate_refresh_token();
+    let refresh_token_exp = OffsetDateTime::now_utc() + REFRESH_TOKEN_LIFETIME;
 
-    // FIXME: return all the token as-is for now, figure out what to do with them later
-    Ok(HttpResponse::Ok().json(CallbackResponse {
-        access_token: token_result.access_token().secret().clone(),
-        refresh_token: token_result.refresh_token().map(|t| t.secret().clone()),
-        expires_in: token_result.expires_in().map(|d| d.as_millis() as u64),
+    info!(
+        email,
+        ?auth_type,
+        "received user info from OAuth2 provider, saving user to database"
+    );
+
+    let user: PersistedUserInfo = database::open(db, move |conn| {
+        use crate::schema::users;
+        use diesel::prelude::*;
+
+        let mut oauth_token: Option<String> =
+            token_result.refresh_token().map(|t| t.secret().to_owned());
+
+        if oauth_token.is_none() {
+            // happens when the user authorizes again without revoking the previous authorization.
+            info!(
+                email,
+                ?auth_type,
+                "recieved null OAuth2 refresh token, using previous value from DB"
+            );
+            oauth_token = users::table
+                .select(users::oauth_token)
+                .filter(users::email.eq(&email).and(users::auth_type.eq(auth_type)))
+                .get_result::<Option<String>>(conn)
+                .optional()?
+                .flatten();
+        }
+
+        let to_persist = NewUser {
+            email,
+            auth_type,
+            refresh_token,
+            refresh_token_exp,
+            oauth_token,
+            name: user_info.name,
+            given_name: user_info.given_name,
+            family_name: user_info.family_name,
+        };
+
+        // Try to insert a new user into the table, or update the existing one.
+        diesel::insert_into(users::table)
+            .values(&to_persist)
+            .on_conflict(users::email)
+            .do_update()
+            .set(&to_persist)
+            .returning(PersistedUserInfo::as_returning())
+            .get_result(conn)
+            .map_err(DatabaseError::from)
+    })
+    .await
+    .map_err(ActixError::from)?;
+
+    let access_token_exp = OffsetDateTime::now_utc() + ACCESS_TOKEN_LIFETIME;
+    let access_token = AuthContext::encode_jwt(user.user_id, access_token_exp, jwt_secret)?;
+
+    Ok(HttpResponse::Ok().json(AuthenticationResponse {
+        user,
+        access_token,
+        access_token_exp,
     }))
 }
 
@@ -267,6 +347,19 @@ struct UserInfo {
     picture: Option<String>,
     email: Option<String>,
     email_verified: Option<bool>,
+}
+
+#[derive(Insertable, AsChangeset)]
+#[diesel(table_name = crate::schema::users)]
+struct NewUser {
+    email: String,
+    auth_type: ClientType,
+    refresh_token: String,
+    refresh_token_exp: OffsetDateTime,
+    oauth_token: Option<String>,
+    name: Option<String>,
+    given_name: Option<String>,
+    family_name: Option<String>,
 }
 
 const PKCE_SECRET_SESSION_KEY: &str = "pkce_secret";
