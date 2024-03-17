@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, sync::Arc};
+use std::error::Error as StdError;
 
 use actix_web::{
     dev::Payload,
@@ -11,50 +11,32 @@ use actix_web::{
 use diesel::{Queryable, Selectable};
 use futures_util::future::LocalBoxFuture;
 use jsonwebtoken as jwt;
+use oauth2::RefreshToken;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::{
+    auth::oauth2_client::{ClientType, DynOAuth2Client},
     config::AppConfiguration,
-    database::{self, Database},
+    database::{self, Database, DatabaseError},
     error::JsonHttpError,
 };
 
-use self::google::GoogleOAuth2Client;
-
-pub mod google;
+mod google;
 mod oauth2_client;
 
-#[derive(Clone)]
-pub struct Clients {
-    google: Option<Arc<GoogleOAuth2Client>>,
-}
-
-impl Clients {
-    #[tracing::instrument(skip_all)]
-    pub async fn new(app_cfg: web::Data<AppConfiguration>) -> Self {
-        let google = match GoogleOAuth2Client::new(app_cfg).await {
-            Err(error) => {
-                error!(%error, "failed to create Google OAuth2 client, Google login is now disabled!");
-                None
-            }
-            Ok(google) => Some(Arc::new(google)),
-        };
-        Clients { google }
-    }
-}
+pub use oauth2_client::OAuth2Clients;
 
 /// Exposes all HTTP routes of this module.
-pub fn routes(clients: &Clients, service_cfg: &mut ServiceConfig) {
+pub fn routes(clients: web::Data<OAuth2Clients>, service_cfg: &mut ServiceConfig) {
     service_cfg.service(refresh_token);
-    if let Some(google) = &clients.google {
+    if let Some(google) = clients.google() {
         google::routes(google.clone(), service_cfg);
     }
-    // cfg.configure(google::routes);
-    // cfg.service(web::scope("/google").configure(google::routes));
+    service_cfg.app_data(clients);
 }
 
 const REFRESH_TOKEN_LIFETIME: Duration = Duration::days(30);
@@ -68,6 +50,7 @@ async fn refresh_token(
     db: web::Data<Database>,
     json: web::Json<RefreshTokenParams>,
     app_cfg: web::Data<AppConfiguration>,
+    clients: web::Data<OAuth2Clients>,
 ) -> ActixResult<HttpResponse> {
     let RefreshTokenParams {
         user_id,
@@ -78,28 +61,32 @@ async fn refresh_token(
     // - user_id matches the one in the request
     // - refresh_token matches the one in the request
     // - refresh_token_exp is not expired
-    let found_email: Option<String> = database::open(db.clone(), move |conn| {
-        use crate::schema::users;
-        use diesel::dsl::now;
-        use diesel::prelude::*;
+    let result: Option<(String, Option<ClientType>, Option<String>)> =
+        database::open(db.clone(), move |conn| {
+            use crate::schema::users;
+            use diesel::dsl::now;
+            use diesel::prelude::*;
 
-        Ok(users::table
-            .filter(
-                users::id.eq(user_id).and(
-                    users::refresh_token
-                        .eq(&refresh_token)
-                        .and(users::refresh_token_exp.ge(now)),
-                ),
-            )
-            .select(users::email)
-            .first::<String>(conn)
-            .optional()?)
-    })
-    .await?;
+            users::table
+                .filter(
+                    users::id.eq(user_id).and(
+                        users::refresh_token
+                            .eq(&refresh_token)
+                            .and(users::refresh_token_exp.ge(now)),
+                    ),
+                )
+                .select((users::email, users::auth_type, users::oauth_token))
+                .get_result(conn)
+                .optional()
+                .map_err(DatabaseError::from)
+        })
+        .await?;
 
-    let email = found_email.ok_or_else(|| {
+    let (email, client_type, oauth_token) = result.ok_or_else(|| {
         JsonHttpError::unauthorized("INVALID_CREDENTIALS", "invalid or expired credentials")
     })?;
+
+    check_user_authorized_oauth2(clients, client_type, oauth_token, &email).await?;
 
     info!(%email, %user_id, lifetime_secs = ACCESS_TOKEN_LIFETIME.whole_seconds(), "refreshing access token of user");
     let access_token_exp = OffsetDateTime::now_utc() + ACCESS_TOKEN_LIFETIME;
@@ -110,13 +97,14 @@ async fn refresh_token(
         use crate::schema::users;
         use diesel::prelude::*;
 
-        Ok(diesel::update(users::table.filter(users::id.eq(user_id)))
+        diesel::update(users::table.filter(users::id.eq(user_id)))
             .set((
                 users::refresh_token.eq(&AuthContext::generate_refresh_token()),
                 users::refresh_token_exp.eq(OffsetDateTime::now_utc() + REFRESH_TOKEN_LIFETIME),
             ))
             .returning(PersistedUserInfo::as_returning())
-            .get_result(conn)?)
+            .get_result(conn)
+            .map_err(DatabaseError::from)
     })
     .await?;
 
@@ -125,6 +113,41 @@ async fn refresh_token(
         access_token,
         access_token_exp,
     }))
+}
+
+/// Sends a request to the OAuth2 provider to check if the user is still authorized.
+#[tracing::instrument(skip(clients, oauth_token))]
+async fn check_user_authorized_oauth2(
+    clients: web::Data<OAuth2Clients>,
+    client_type: Option<ClientType>,
+    oauth_token: Option<String>,
+    expected_email: &str,
+) -> ActixResult<()> {
+    let Some(client): Option<&DynOAuth2Client> =
+        client_type.and_then(|t| clients.get(t).map(|c| c.as_ref()))
+    else {
+        return Ok(());
+    };
+
+    info!("checking user authorization with OAuth2 provider");
+
+    let access_token =
+        oauth2_client::refresh_token(client, &RefreshToken::new(oauth_token.unwrap_or_default()))
+            .await?;
+    let user_info = oauth2_client::fetch_user_info(client, &access_token).await?;
+
+    if user_info.email.as_deref() != Some(expected_email) {
+        warn!(
+            email = user_info.email,
+            "user email does not match the one in the database"
+        );
+        Err(
+            JsonHttpError::unauthorized("INVALID_CREDENTIALS", "invalid or expired credentials")
+                .into(),
+        )
+    } else {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]

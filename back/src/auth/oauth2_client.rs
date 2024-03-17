@@ -5,14 +5,14 @@ use std::{borrow::Cow, error::Error as StdError, fmt::Debug, sync::Arc};
 use actix_session::Session;
 use actix_web::{
     error::{Error as ActixError, ErrorUnauthorized, Result as ActixResult},
-    HttpResponse,
+    web, HttpResponse,
 };
 use diesel::{prelude::Insertable, query_builder::AsChangeset};
 use diesel_derive_enum::DbEnum;
 use oauth2::{
     basic::{BasicErrorResponse, BasicTokenResponse, BasicTokenType},
     AccessToken, AuthorizationCode, AuthorizationRequest, CodeTokenRequest, PkceCodeChallenge,
-    RequestTokenError, TokenResponse,
+    RefreshToken, RefreshTokenRequest, RequestTokenError, TokenResponse,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -20,12 +20,51 @@ use tracing::{error, info, warn};
 
 use crate::{
     auth::{
-        AuthContext, AuthenticationResponse, PersistedUserInfo, ACCESS_TOKEN_LIFETIME,
-        REFRESH_TOKEN_LIFETIME,
+        google::GoogleOAuth2Client, AuthContext, AuthenticationResponse, PersistedUserInfo,
+        ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME,
     },
+    config::AppConfiguration,
     database::{self, Database, DatabaseError},
     error::JsonHttpError,
 };
+
+/// Provides references to all currently loaded clients.
+#[derive(Clone)]
+pub struct OAuth2Clients {
+    google: Option<Arc<GoogleOAuth2Client>>,
+    /// Same pointer as `google`, but as a trait object.
+    google_dyn: Option<Arc<DynOAuth2Client>>,
+}
+
+pub type DynOAuth2Client = dyn OAuth2Client + Send + Sync + 'static;
+
+impl OAuth2Clients {
+    #[tracing::instrument(skip_all)]
+    pub async fn new(app_cfg: web::Data<AppConfiguration>) -> Self {
+        let google = match GoogleOAuth2Client::new(app_cfg).await {
+            Err(error) => {
+                error!(%error, "failed to create Google OAuth2 client, Google login is now disabled!");
+                None
+            }
+            Ok(google) => Some(Arc::new(google)),
+        };
+        let google_dyn = google.clone().map(|c| c as Arc<DynOAuth2Client>);
+        OAuth2Clients { google, google_dyn }
+    }
+
+    /// Returns a refrence to the Google client, if enabled.
+    pub fn google(&self) -> Option<&Arc<GoogleOAuth2Client>> {
+        self.google.as_ref()
+    }
+
+    /// Returns the coressponding OAuth2 client for the given `ClientType` as a trait object
+    /// pointer.
+    pub fn get(&self, client_type: ClientType) -> Option<&Arc<DynOAuth2Client>> {
+        match client_type {
+            ClientType::Google => self.google_dyn.as_ref(),
+        }
+    }
+}
 
 #[derive(DbEnum, Debug, Clone, Copy, PartialEq, Eq)]
 #[ExistingTypePath = "crate::schema::sql_types::AuthType"]
@@ -33,7 +72,7 @@ pub enum ClientType {
     Google,
 }
 
-pub trait OAuth2Client {
+pub trait OAuth2Client: Debug {
     fn client_type(&self) -> ClientType;
 
     fn new_authorization_request(&self, pkce_challenge: PkceCodeChallenge) -> AuthorizationRequest;
@@ -44,6 +83,11 @@ pub trait OAuth2Client {
     ) -> CodeTokenRequest<BasicErrorResponse, BasicTokenResponse, BasicTokenType>;
 
     fn new_user_info_request(&self) -> UserInfoRequest;
+
+    fn new_refresh_token_request<'a>(
+        &'a self,
+        refresh_token: &'a RefreshToken,
+    ) -> RefreshTokenRequest<'a, BasicErrorResponse, BasicTokenResponse, BasicTokenType>;
 }
 
 #[derive(Serialize)]
@@ -101,7 +145,7 @@ pub async fn finish_authorization<C>(
     jwt_secret: &[u8],
 ) -> ActixResult<HttpResponse>
 where
-    C: OAuth2Client + Debug + ?Sized,
+    C: OAuth2Client + ?Sized,
 {
     let saved_state: String = read_from_session(&session, STATE_TOKEN_SESSION_KEY)?;
     let pkce_secret: String = read_from_session(&session, PKCE_SECRET_SESSION_KEY)?;
@@ -241,7 +285,7 @@ async fn fetch_tokens<C>(
     code: AuthorizationCode,
 ) -> Result<BasicTokenResponse, JsonHttpError>
 where
-    C: OAuth2Client + Debug + ?Sized,
+    C: OAuth2Client + ?Sized,
 {
     let pkce_verifier = oauth2::PkceCodeVerifier::new(pkce_secret.clone());
 
@@ -273,9 +317,44 @@ where
 }
 
 #[tracing::instrument(skip(token))]
-async fn fetch_user_info<C>(client: &C, token: &AccessToken) -> Result<UserInfo, JsonHttpError>
+pub async fn refresh_token<C>(
+    client: &C,
+    token: &RefreshToken,
+) -> Result<AccessToken, JsonHttpError>
 where
-    C: OAuth2Client + Debug + ?Sized,
+    C: OAuth2Client + ?Sized,
+{
+    client
+        .new_refresh_token_request(token)
+        .request_async(oauth2::reqwest::async_http_client)
+        .await
+        .map(|r| r.access_token().clone())
+        .map_err(|error| {
+            match error {
+                RequestTokenError::ServerResponse(error) => {
+                    warn!(%error, "oauth2 provider returned error")
+                }
+                RequestTokenError::Request(error) => {
+                    warn!(%error, "error while requesting oauth token refresh")
+                }
+                RequestTokenError::Parse(error, _) => {
+                    warn!(%error, "failed to parse oauth2 provider response")
+                }
+                RequestTokenError::Other(error) => {
+                    warn!(%error, "error while exchanging oauth refresh token")
+                }
+            }
+            JsonHttpError::internal_server_error(
+                "OAUTH2_PROVIDER_ERROR",
+                "an error occurred while processing the authorization request",
+            )
+        })
+}
+
+#[tracing::instrument(skip(token))]
+pub async fn fetch_user_info<C>(client: &C, token: &AccessToken) -> Result<UserInfo, JsonHttpError>
+where
+    C: OAuth2Client + ?Sized,
 {
     let endpoint = client.new_user_info_request().endpoint;
 
@@ -339,14 +418,14 @@ impl<'a> UserInfoRequest<'a> {
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
-struct UserInfo {
-    sub: String,
-    name: Option<String>,
-    given_name: Option<String>,
-    family_name: Option<String>,
-    picture: Option<String>,
-    email: Option<String>,
-    email_verified: Option<bool>,
+pub struct UserInfo {
+    pub sub: String,
+    pub name: Option<String>,
+    pub given_name: Option<String>,
+    pub family_name: Option<String>,
+    pub picture: Option<String>,
+    pub email: Option<String>,
+    pub email_verified: Option<bool>,
 }
 
 #[derive(Insertable, AsChangeset)]
