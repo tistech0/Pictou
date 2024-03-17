@@ -16,7 +16,7 @@ use anyhow::anyhow;
 use oauth2::{
     basic::{BasicClient, BasicErrorResponse, BasicTokenResponse, BasicTokenType},
     AuthUrl, AuthorizationCode, AuthorizationRequest, CodeTokenRequest, CsrfToken,
-    PkceCodeChallenge, RedirectUrl, RevocationUrl, TokenUrl,
+    PkceCodeChallenge, RedirectUrl, RefreshToken, RefreshTokenRequest, RevocationUrl, TokenUrl,
 };
 use serde::Deserialize;
 use tracing::info;
@@ -146,6 +146,13 @@ impl OAuth2Client for GoogleOAuth2Client {
 
     fn new_user_info_request(&self) -> UserInfoRequest {
         UserInfoRequest::new(Cow::from(&self.userinfo_endpoint))
+    }
+
+    fn new_refresh_token_request<'a>(
+        &'a self,
+        refresh_token: &'a RefreshToken,
+    ) -> RefreshTokenRequest<'a, BasicErrorResponse, BasicTokenResponse, BasicTokenType> {
+        self.client.exchange_refresh_token(refresh_token)
     }
 }
 

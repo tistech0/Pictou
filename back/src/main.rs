@@ -23,7 +23,11 @@ mod log;
 mod openapi;
 mod schema;
 
-use crate::{auth::AuthContext, config::AppConfiguration, database::Database};
+use crate::{
+    auth::{AuthContext, OAuth2Clients},
+    config::AppConfiguration,
+    database::Database,
+};
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -58,9 +62,11 @@ async fn init() -> anyhow::Result<()> {
     let port = app_cfg.port;
     let database = web::Data::new(Database::new(&app_cfg)?);
 
-    let auth_clients = auth::Clients::new(app_cfg.clone()).await;
+    // lifted the call to HttpServer::new because it does not accept async
+    let auth_clients = web::Data::new(OAuth2Clients::new(app_cfg.clone()).await);
 
     let server = HttpServer::new(move || {
+        let auth_clients = auth_clients.clone();
         App::new()
             .app_data(app_cfg.clone())
             .app_data(database.clone())
@@ -87,7 +93,7 @@ async fn init() -> anyhow::Result<()> {
                     .url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
             )
             .service(auth_only)
-            .configure(|cfg| auth::routes(&auth_clients, cfg))
+            .configure(|cfg| auth::routes(auth_clients, cfg))
             .route("/hey", web::get().to(manual_hello))
     })
     .bind((address.clone(), port))?;
