@@ -2,7 +2,6 @@ use std::{
     convert::Infallible,
     error::Error as StdError,
     fmt::{self, Display},
-    ops::Deref,
     sync::Arc,
     time::Duration,
 };
@@ -86,9 +85,8 @@ impl Database {
 /// ```
 ///
 /// [`web::Data<Database>`]: actix_web::web::Data
-#[allow(dead_code)] // FIXME
 pub async fn open<F, R, E>(
-    db: impl Deref<Target = Arc<Database>> + Send + 'static,
+    db: impl ToDatabasePointer + Send + 'static,
     scope: F,
 ) -> DatabaseResult<R, E>
 where
@@ -98,6 +96,7 @@ where
     R: Send + 'static,
     E: StdError + Send + 'static,
 {
+    let db = db.to_database_ptr();
     web::block(move || {
         debug!("acquiring a connection from the pool");
         let mut conn = db.pool.get().map_err(|error| {
@@ -186,5 +185,21 @@ impl From<BlockingError> for DatabaseError {
 impl From<diesel::result::Error> for DatabaseError {
     fn from(err: diesel::result::Error) -> Self {
         DatabaseError::Diesel(err)
+    }
+}
+
+pub trait ToDatabasePointer {
+    fn to_database_ptr(&self) -> Arc<Database>;
+}
+
+impl ToDatabasePointer for Arc<Database> {
+    fn to_database_ptr(&self) -> Arc<Database> {
+        self.clone()
+    }
+}
+
+impl ToDatabasePointer for web::Data<Database> {
+    fn to_database_ptr(&self) -> Arc<Database> {
+        self.clone().into_inner()
     }
 }
