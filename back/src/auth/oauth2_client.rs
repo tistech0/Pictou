@@ -1,5 +1,7 @@
 //! Common utilities for OAuth2 clients.
 
+use std::{borrow::Cow, error::Error as StdError, fmt::Debug};
+
 use actix_session::Session;
 use actix_web::{
     error::{ErrorUnauthorized, Result as ActixResult},
@@ -7,11 +9,11 @@ use actix_web::{
 };
 use oauth2::{
     basic::{BasicErrorResponse, BasicTokenResponse, BasicTokenType},
-    AuthorizationCode, AuthorizationRequest, CodeTokenRequest, PkceCodeChallenge,
+    AccessToken, AuthorizationCode, AuthorizationRequest, CodeTokenRequest, PkceCodeChallenge,
     RequestTokenError, TokenResponse,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 use crate::error::JsonHttpError;
 
@@ -22,6 +24,8 @@ pub trait OAuth2Client {
         &self,
         code: AuthorizationCode,
     ) -> CodeTokenRequest<BasicErrorResponse, BasicTokenResponse, BasicTokenType>;
+
+    fn new_user_info_request(&self) -> UserInfoRequest;
 }
 
 #[derive(Serialize)]
@@ -38,7 +42,7 @@ struct CallbackResponse {
 /// See [](https://www.oauth.com/oauth2-servers/authorization/the-authorization-response).
 #[derive(Debug, Deserialize)]
 pub struct OAuth2AuthorizationResponse {
-    code: Option<String>,
+    code: Option<AuthorizationCode>,
     #[serde(default)]
     state: String,
     error: Option<String>,
@@ -70,44 +74,23 @@ where
 
 /// Finishes the OAuth2 authorization process by exchanging the authorization code for an access token.
 /// Called by the OAuth2 provider after the user has authorized the application.
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(response, session))]
 pub async fn finish_authorization<C>(
     client: &C,
     response: OAuth2AuthorizationResponse,
     session: Session,
 ) -> ActixResult<HttpResponse>
 where
-    C: OAuth2Client + ?Sized,
+    C: OAuth2Client + Debug + ?Sized,
 {
     let saved_state: String = read_from_session(&session, STATE_TOKEN_SESSION_KEY)?;
     let pkce_secret: String = read_from_session(&session, PKCE_SECRET_SESSION_KEY)?;
 
     let code = handle_authorization_response(response, &saved_state)?;
+    let token_result = fetch_tokens(client, pkce_secret, code).await?;
+    let user_info = fetch_user_info(client, token_result.access_token()).await?;
 
-    let pkce_verifier = oauth2::PkceCodeVerifier::new(pkce_secret.clone());
-
-    let token_result = client
-        .new_code_token_request(AuthorizationCode::new(code))
-        .set_pkce_verifier(pkce_verifier)
-        .request_async(oauth2::reqwest::async_http_client)
-        .await
-        .map_err(|error| {
-            match error {
-                RequestTokenError::ServerResponse(error) => {
-                    warn!(%error, "oauth2 provider returned error")
-                }
-                RequestTokenError::Request(error) => {
-                    warn!(%error, "error while requesting oauth code exchange")
-                }
-                RequestTokenError::Parse(error, _) => {
-                    warn!(%error, "failed to parse oauth2 provider response")
-                }
-                RequestTokenError::Other(error) => {
-                    warn!(%error, "error while exchanging oauth code")
-                }
-            }
-            ErrorUnauthorized("failed to authenticate with provider")
-        })?;
+    info!(?user_info, "user info fetched");
 
     // FIXME: return all the token as-is for now, figure out what to do with them later
     Ok(HttpResponse::Ok().json(CallbackResponse {
@@ -124,7 +107,7 @@ where
 fn handle_authorization_response(
     response: OAuth2AuthorizationResponse,
     expected_state: &str,
-) -> Result<String, JsonHttpError> {
+) -> Result<AuthorizationCode, JsonHttpError> {
     match response {
         OAuth2AuthorizationResponse {
             error: Some(error), ..
@@ -171,6 +154,121 @@ fn handle_authorization_response(
     }
 }
 
+#[tracing::instrument(skip(code))]
+async fn fetch_tokens<C>(
+    client: &C,
+    pkce_secret: String,
+    code: AuthorizationCode,
+) -> Result<BasicTokenResponse, JsonHttpError>
+where
+    C: OAuth2Client + Debug + ?Sized,
+{
+    let pkce_verifier = oauth2::PkceCodeVerifier::new(pkce_secret.clone());
+
+    client
+        .new_code_token_request(code)
+        .set_pkce_verifier(pkce_verifier)
+        .request_async(oauth2::reqwest::async_http_client)
+        .await
+        .map_err(|error| {
+            match error {
+                RequestTokenError::ServerResponse(error) => {
+                    warn!(%error, "oauth2 provider returned error")
+                }
+                RequestTokenError::Request(error) => {
+                    warn!(%error, "error while requesting oauth code exchange")
+                }
+                RequestTokenError::Parse(error, _) => {
+                    warn!(%error, "failed to parse oauth2 provider response")
+                }
+                RequestTokenError::Other(error) => {
+                    warn!(%error, "error while exchanging oauth code")
+                }
+            }
+            JsonHttpError::internal_server_error(
+                "OAUTH2_PROVIDER_ERROR",
+                "an error occurred while processing the authorization request",
+            )
+        })
+}
+
+#[tracing::instrument(skip(token))]
+async fn fetch_user_info<C>(client: &C, token: &AccessToken) -> Result<UserInfo, JsonHttpError>
+where
+    C: OAuth2Client + Debug + ?Sized,
+{
+    let endpoint = client.new_user_info_request().endpoint;
+
+    let http_client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|error| {
+            error!(
+                error = &error as &dyn StdError,
+                "failed to create HTTP client"
+            );
+            JsonHttpError::internal_server_error("INTERNAL_ERROR", "internal error")
+        })?;
+
+    http_client
+        .get(endpoint.as_ref())
+        .bearer_auth(token.secret())
+        .send()
+        .await
+        .map_err(|error| {
+            error!(
+                error = &error as &dyn StdError,
+                "failed to send HTTP request"
+            );
+            JsonHttpError::internal_server_error("INTERNAL_ERROR", "internal error")
+        })?
+        .error_for_status()
+        .map_err(|error| {
+            warn!(
+                error = &error as &dyn StdError,
+                "recieved error response from OAuth2 provider"
+            );
+            JsonHttpError::forbidden(
+                "OAUTH2_FORBIDDEN",
+                "unsufficient permissions from OAuth2 provider",
+            )
+        })?
+        .json::<UserInfo>()
+        .await
+        .map_err(|error| {
+            warn!(
+                error = &error as &dyn StdError,
+                "could not parse user info response"
+            );
+            JsonHttpError::internal_server_error(
+                "OAUTH2_PROVIDER_ERROR",
+                "an error occurred while processing the authorization request",
+            )
+        })
+}
+
+pub struct UserInfoRequest<'a> {
+    endpoint: Cow<'a, str>,
+}
+
+impl<'a> UserInfoRequest<'a> {
+    pub fn new(endpoint: Cow<'a, str>) -> Self {
+        Self { endpoint }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+struct UserInfo {
+    sub: String,
+    name: Option<String>,
+    given_name: Option<String>,
+    family_name: Option<String>,
+    picture: Option<String>,
+    email: Option<String>,
+    email_verified: Option<bool>,
+}
+
 const PKCE_SECRET_SESSION_KEY: &str = "pkce_secret";
 const STATE_TOKEN_SESSION_KEY: &str = "OAUTH2_STATE_TOKEN";
 
@@ -202,26 +300,26 @@ mod tests {
     #[test]
     fn test_handle_authorization_response() {
         let response = OAuth2AuthorizationResponse {
-            code: Some("code".to_string()),
+            code: Some(AuthorizationCode::new("code".to_owned())),
             state: "state".to_string(),
             error: None,
             error_description: None,
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "state"),
+            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
             Ok("code".to_owned())
         );
 
         let response = OAuth2AuthorizationResponse {
-            code: Some("code".to_string()),
+            code: Some(AuthorizationCode::new("code".to_owned())),
             state: "state".to_string(),
             error: None,
             error_description: None,
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "invalid"),
+            handle_authorization_response(response, "invalid").map(|c| c.secret().clone()),
             Err(JsonHttpError::forbidden(
                 "OAUTH2_INVALID_STATE",
                 "invalid state token"
@@ -229,14 +327,14 @@ mod tests {
         );
 
         let response = OAuth2AuthorizationResponse {
-            code: Some("code".to_string()),
+            code: Some(AuthorizationCode::new("code".to_owned())),
             state: "state".to_string(),
             error: Some("access_denied".to_string()),
             error_description: None,
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "state"),
+            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
             Err(JsonHttpError::unauthorized(
                 "OAUTH2_ACCESS_DENIED",
                 "access denied by user"
@@ -251,7 +349,7 @@ mod tests {
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "state"),
+            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
             Err(JsonHttpError::internal_server_error(
                 "OAUTH2_PROVIDER_ERROR",
                 "an error occurred while processing the authorization request"
@@ -259,14 +357,14 @@ mod tests {
         );
 
         let response = OAuth2AuthorizationResponse {
-            code: Some("code".to_string()),
+            code: Some(AuthorizationCode::new("code".to_owned())),
             state: "state".to_string(),
             error: Some("server_error".to_string()),
             error_description: Some("description".to_string()),
             error_uri: Some("uri".to_string()),
         };
         assert_eq!(
-            handle_authorization_response(response, "state"),
+            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
             Err(JsonHttpError::internal_server_error(
                 "OAUTH2_PROVIDER_ERROR",
                 "an error occurred while processing the authorization request"

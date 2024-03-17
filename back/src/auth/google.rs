@@ -1,4 +1,8 @@
-use std::sync::Arc;
+use std::{
+    borrow::Cow,
+    fmt::{self, Debug},
+    sync::Arc,
+};
 
 use actix_session::Session;
 use actix_web::{
@@ -18,7 +22,7 @@ use serde::Deserialize;
 use tracing::info;
 
 use crate::{
-    auth::oauth2_client::{self, OAuth2AuthorizationResponse},
+    auth::oauth2_client::{self, OAuth2AuthorizationResponse, UserInfoRequest},
     config::AppConfiguration,
 };
 
@@ -54,6 +58,7 @@ async fn callback(
 
 pub struct GoogleOAuth2Client {
     client: BasicClient,
+    userinfo_endpoint: String,
 }
 
 impl GoogleOAuth2Client {
@@ -67,11 +72,17 @@ impl GoogleOAuth2Client {
             .as_ref()
             .ok_or_else(|| anyhow!("Google client secret not found"))?;
 
-        let open_id_config =
-            reqwest::get("https://accounts.google.com/.well-known/openid-configuration")
-                .await?
-                .json::<GooogleOpenIdConfiguration>()
-                .await?;
+        let http_client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()?;
+
+        let open_id_config = http_client
+            .get("https://accounts.google.com/.well-known/openid-configuration")
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<GooogleOpenIdConfiguration>()
+            .await?;
 
         if open_id_config.issuer != "https://accounts.google.com" {
             return Err(anyhow!(
@@ -91,7 +102,10 @@ impl GoogleOAuth2Client {
             RedirectUrl::new("http://localhost:8000/auth/google/callback".to_string()).unwrap(),
         );
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            userinfo_endpoint: open_id_config.userinfo_endpoint,
+        })
     }
 }
 
@@ -115,6 +129,16 @@ impl OAuth2Client for GoogleOAuth2Client {
     ) -> CodeTokenRequest<BasicErrorResponse, BasicTokenResponse, BasicTokenType> {
         self.client.exchange_code(code)
     }
+
+    fn new_user_info_request(&self) -> UserInfoRequest {
+        UserInfoRequest::new(Cow::from(&self.userinfo_endpoint))
+    }
+}
+
+impl Debug for GoogleOAuth2Client {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GoogleOAuth2Client").finish_non_exhaustive()
+    }
 }
 
 /// Represents the OpenID Connect discovery document with a Google twist.
@@ -126,6 +150,7 @@ struct GooogleOpenIdConfiguration {
     issuer: String,
     authorization_endpoint: AuthUrl,
     token_endpoint: TokenUrl,
+    userinfo_endpoint: String,
     /// not part of the standard, but Google's discovery document includes it.
     revocation_endpoint: RevocationUrl,
 }
