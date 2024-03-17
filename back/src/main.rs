@@ -52,6 +52,8 @@ async fn init() -> anyhow::Result<()> {
     let port = app_cfg.port;
     let database = web::Data::new(Database::new(&app_cfg)?);
 
+    let auth_clients = auth::Clients::new(app_cfg.clone()).await;
+
     let server = HttpServer::new(move || {
         App::new()
             .app_data(app_cfg.clone())
@@ -78,8 +80,7 @@ async fn init() -> anyhow::Result<()> {
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
             )
-            .configure(|cfg| auth::routes(cfg, app_cfg.clone()))
-            // .service(web::scope("/auth").configure(auth::routes))
+            .configure(|cfg| auth::routes(&auth_clients, cfg))
             .route("/hey", web::get().to(manual_hello))
     })
     .bind((address.clone(), port))?;

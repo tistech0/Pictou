@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_session::Session;
 use actix_web::{
     error::Error,
@@ -10,9 +12,10 @@ use anyhow::anyhow;
 use oauth2::{
     basic::{BasicClient, BasicErrorResponse, BasicTokenResponse, BasicTokenType},
     AuthUrl, AuthorizationCode, AuthorizationRequest, CodeTokenRequest, CsrfToken,
-    PkceCodeChallenge, RedirectUrl, TokenUrl,
+    PkceCodeChallenge, RedirectUrl, RevocationUrl, TokenUrl,
 };
-use tracing::{error, info, warn};
+use serde::Deserialize;
+use tracing::info;
 
 use crate::{
     auth::oauth2_client::{self, OAuth2AuthorizationResponse},
@@ -23,18 +26,11 @@ use super::oauth2_client::OAuth2Client;
 
 /// Exposes all HTTP routes of this module.
 #[tracing::instrument(skip_all)]
-pub fn routes(service_cfg: &mut ServiceConfig, app_cfg: web::Data<AppConfiguration>) {
-    match GoogleOAuth2Client::new(app_cfg) {
-        Err(error) => {
-            error!(%error, "failed to create Google OAuth2 client, Google login is now disabled!")
-        }
-        Ok(google_client) => {
-            service_cfg
-                .service(authorize)
-                .service(callback)
-                .app_data(web::Data::new(google_client));
-        }
-    }
+pub fn routes(client: Arc<GoogleOAuth2Client>, service_cfg: &mut ServiceConfig) {
+    service_cfg
+        .service(authorize)
+        .service(callback)
+        .app_data(web::Data::from(client));
 }
 
 #[get("/auth/google/authorize")]
@@ -56,12 +52,12 @@ async fn callback(
     oauth2_client::finish_authorization(client.as_ref(), query.into_inner(), session).await
 }
 
-struct GoogleOAuth2Client {
+pub struct GoogleOAuth2Client {
     client: BasicClient,
 }
 
 impl GoogleOAuth2Client {
-    pub fn new(app_cfg: web::Data<AppConfiguration>) -> anyhow::Result<Self> {
+    pub async fn new(app_cfg: web::Data<AppConfiguration>) -> anyhow::Result<Self> {
         let client_id = app_cfg
             .google_client_id
             .as_ref()
@@ -71,14 +67,26 @@ impl GoogleOAuth2Client {
             .as_ref()
             .ok_or_else(|| anyhow!("Google client secret not found"))?;
 
+        let open_id_config =
+            reqwest::get("https://accounts.google.com/.well-known/openid-configuration")
+                .await?
+                .json::<GooogleOpenIdConfiguration>()
+                .await?;
+
+        if open_id_config.issuer != "https://accounts.google.com" {
+            return Err(anyhow!(
+                "Invalid OpenID issuer for Google, expected https://accounts.google.com, got {}",
+                open_id_config.issuer
+            ));
+        }
+
         let client = BasicClient::new(
             client_id.clone(),
             Some(client_secret.clone()),
-            AuthUrl::new("https://accounts.google.com/o/oauth2/v2/auth".to_owned())?,
-            Some(TokenUrl::new(
-                "https://oauth2.googleapis.com/token".to_owned(),
-            )?),
+            open_id_config.authorization_endpoint,
+            Some(open_id_config.token_endpoint),
         )
+        .set_revocation_uri(open_id_config.revocation_endpoint)
         .set_redirect_uri(
             RedirectUrl::new("http://localhost:8000/auth/google/callback".to_string()).unwrap(),
         );
@@ -92,12 +100,9 @@ impl OAuth2Client for GoogleOAuth2Client {
         self.client
             .authorize_url(CsrfToken::new_random)
             // Set the desired scopes.
-            .add_scope(oauth2::Scope::new(
-                "https://www.googleapis.com/auth/userinfo.email".to_owned(),
-            ))
-            .add_scope(oauth2::Scope::new(
-                "https://www.googleapis.com/auth/userinfo.profile".to_owned(),
-            ))
+            .add_scope(oauth2::Scope::new("email".to_owned()))
+            .add_scope(oauth2::Scope::new("openid".to_owned()))
+            .add_scope(oauth2::Scope::new("profile".to_owned()))
             // Set the PKCE code challenge.
             .set_pkce_challenge(pkce_challenge)
             // Tells Google to add the "refresh_token" field
@@ -110,4 +115,17 @@ impl OAuth2Client for GoogleOAuth2Client {
     ) -> CodeTokenRequest<BasicErrorResponse, BasicTokenResponse, BasicTokenType> {
         self.client.exchange_code(code)
     }
+}
+
+/// Represents the OpenID Connect discovery document with a Google twist.
+///
+/// OpenID spec: https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+/// Google's discovery document: https://accounts.google.com/.well-known/openid-configuration
+#[derive(Deserialize)]
+struct GooogleOpenIdConfiguration {
+    issuer: String,
+    authorization_endpoint: AuthUrl,
+    token_endpoint: TokenUrl,
+    /// not part of the standard, but Google's discovery document includes it.
+    revocation_endpoint: RevocationUrl,
 }
