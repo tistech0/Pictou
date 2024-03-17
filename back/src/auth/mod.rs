@@ -1,4 +1,4 @@
-use std::error::Error as StdError;
+use std::{error::Error as StdError, sync::Arc};
 
 use actix_web::{
     dev::Payload,
@@ -22,13 +22,36 @@ use crate::{
     error::JsonHttpError,
 };
 
+use self::google::GoogleOAuth2Client;
+
 pub mod google;
 mod oauth2_client;
 
+#[derive(Clone)]
+pub struct Clients {
+    google: Option<Arc<GoogleOAuth2Client>>,
+}
+
+impl Clients {
+    #[tracing::instrument(skip_all)]
+    pub async fn new(app_cfg: web::Data<AppConfiguration>) -> Self {
+        let google = match GoogleOAuth2Client::new(app_cfg).await {
+            Err(error) => {
+                error!(%error, "failed to create Google OAuth2 client, Google login is now disabled!");
+                None
+            }
+            Ok(google) => Some(Arc::new(google)),
+        };
+        Clients { google }
+    }
+}
+
 /// Exposes all HTTP routes of this module.
-pub fn routes(service_cfg: &mut ServiceConfig, app_cfg: web::Data<AppConfiguration>) {
+pub fn routes(clients: &Clients, service_cfg: &mut ServiceConfig) {
     service_cfg.service(refresh_token);
-    google::routes(service_cfg, app_cfg);
+    if let Some(google) = &clients.google {
+        google::routes(google.clone(), service_cfg);
+    }
     // cfg.configure(google::routes);
     // cfg.service(web::scope("/google").configure(google::routes));
 }

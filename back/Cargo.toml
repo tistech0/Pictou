@@ -23,12 +23,7 @@ anyhow = "^1.0.81"
 actix-session = { version = "~0.9.0", features = ["cookie-session"] }
 serde = { version = "~1.0.197", features = ["derive"] }
 serde_json = "^1"
-diesel = { version = "^2.1.4", features = [
-    "postgres",
-    "r2d2",
-    "time",
-    "uuid",
-] }
+diesel = { version = "^2.1.4", features = ["postgres", "r2d2", "time", "uuid"] }
 r2d2 = "~0.8.10"
 uuid = { version = "^1.7.0", features = ["serde", "v4"] }
 jsonwebtoken = "^9.2.0"
@@ -45,6 +40,13 @@ mime = "~0.3.17"
 rand = "~0.8.5"
 base64 = "~0.21.7"
 time = "~0.3.34"
+reqwest = { version = "~0.11.26", default-features = false, features = [
+    "json",
+    "rustls-tls",
+    "gzip",
+    "brotli",
+    "deflate",
+] }
 
 [dev-dependencies]
 actix-rt = "^2.9.0"
