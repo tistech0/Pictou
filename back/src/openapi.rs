@@ -1,5 +1,5 @@
 use utoipa::openapi::security::{
-    Flow, HttpAuthScheme, HttpBuilder, Implicit, OAuth2, Scopes, SecurityScheme,
+    ClientCredentials, Flow, HttpAuthScheme, HttpBuilder, OAuth2, Scopes, SecurityScheme,
 };
 use utoipa::{Modify, OpenApi};
 use utoipa_auto_discovery::utoipa_auto_discovery;
@@ -12,6 +12,7 @@ use crate::api::users::{User, UserList, UserPost};
 use crate::api::{Binary, OpenapiUuid};
 use crate::auth::error::{AuthError, AuthErrorKind};
 use crate::auth::{AuthenticationResponse, PersistedUserInfo, RefreshTokenParams};
+use crate::config::AppConfiguration;
 use crate::error_handler::{ApiError, ApiErrorCode};
 
 struct SecuritySchemas;
@@ -19,14 +20,17 @@ struct SecuritySchemas;
 impl Modify for SecuritySchemas {
     fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
         let components = openapi.components.as_mut().unwrap();
+        let app_cfg = AppConfiguration::from_env().expect("Failed to load app configuration");
 
         components.add_security_scheme(
             "Google OAuth2",
             SecurityScheme::OAuth2(OAuth2::with_description(
-                [Flow::Implicit(Implicit::with_refresh_url(
-                    "http://localhost:8000/api/auth/google/authorize",
-                    Scopes::new(),
-                    "http://localhost:8000/api/auth/refresh",
+                [Flow::ClientCredentials(ClientCredentials::new(
+                    app_cfg
+                        .base_url
+                        .join("api/google/authorize")
+                        .expect("Failed to build Google authorization URL"),
+                    Scopes::default(),
                 ))],
                 "Google OAuth2 flow (no need to fill client id)",
             )),
