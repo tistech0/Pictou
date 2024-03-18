@@ -12,6 +12,15 @@ class LoginScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20.0),
+              child: Image.asset(
+                'assets/images/default_image.jpeg',
+                width: 150,
+                height: 150,
+              ),
+            ),
+            const SizedBox(height: 30),
             Text(
               'Welcome back on Pictou center',
               style: TextStyle(fontSize: 24),
@@ -23,8 +32,7 @@ class LoginScreen extends StatelessWidget {
               },
               child: Text(
                 'Login',
-                style:
-                    TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+                style: TextStyle(color: Colors.blue),
               ),
             ),
           ],
