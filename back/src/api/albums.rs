@@ -127,7 +127,7 @@ pub async fn create_album(album: web::Json<AlbumPost>) -> impl Responder {
         (status = StatusCode::OK, description = "Successfully patched", body = Album),
         (status = StatusCode::BAD_REQUEST, body = APIError, examples(
             ("Invalid path parameters" = (value = json!(path_error_example()))),
-            ("Invalid payload" = (value = json!(json_payload_error_example())))), 
+            ("Invalid payload" = (value = json!(json_payload_error_example())))),
             content_type = "application/json"
         ),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
