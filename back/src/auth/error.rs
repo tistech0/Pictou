@@ -10,15 +10,22 @@ use utoipa::ToSchema;
 
 #[non_exhaustive]
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AuthErrorKind {
+    #[serde(rename = "INVALID_CREDENTIALS")]
     InvalidCredentials,
+    #[serde(rename = "INVALID_AUTHORIZATION_HEADER")]
     InvalidAuthorizationHeader,
+    #[serde(rename = "INVALID_TOKEN")]
     InvalidToken,
+    #[serde(rename = "OAUTH2_PROVIDER_ERROR")]
     OAuth2ProviderError,
+    #[serde(rename = "OAUTH2_AUTHORIZATION_DENIED")]
     OAuth2AuthorizationDenied,
+    #[serde(rename = "OAUTH2_INVALID_STATE")]
     OAuth2InvalidState,
+    #[serde(rename = "OAUTH2_FORBIDDEN")]
     OAuth2Forbidden,
+    #[serde(rename = "INTERNAL_ERROR")]
     InternalError,
 }
 
@@ -64,10 +71,10 @@ impl AuthErrorKind {
     }
 }
 
-#[derive(Debug, ToSchema)]
+#[derive(Debug)]
 pub struct AuthError {
     kind: AuthErrorKind,
-    #[schema(value_type = String)]
+    /// Should *not* appear in client responses, for debugging/tracing purposes only.
     cause: Option<Box<dyn StdError + 'static>>,
 }
 
@@ -101,6 +108,7 @@ impl Display for AuthError {
 }
 
 impl StdError for AuthError {
+    /// Should *not* appear in client responses, for debugging/tracing purposes only.
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         self.cause.as_ref().map(|e| e.as_ref())
     }
@@ -112,10 +120,46 @@ impl Serialize for AuthError {
         S: serde::Serializer,
     {
         JsonAuthError {
-            code: self.kind,
-            message: self.kind.user_message(),
+            error_code: self.kind,
+            description: self.kind.user_message(),
+            http_status: self.kind.status_code().as_u16(),
         }
         .serialize(serializer)
+    }
+}
+
+impl<'s> ToSchema<'s> for AuthError {
+    fn schema() -> (
+        &'s str,
+        utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>,
+    ) {
+        use utoipa::openapi::{ObjectBuilder, SchemaType};
+
+        (
+            "AuthError",
+            ObjectBuilder::new()
+                .property(
+                    "description",
+                    ObjectBuilder::new()
+                        .schema_type(SchemaType::String)
+                        .example(Some(serde_json::value::Value::String(
+                            "some error description".to_owned(),
+                        ))),
+                )
+                .required("description")
+                .property("error_code", AuthErrorKind::schema().1)
+                .required("error_code")
+                .property(
+                    "http_status",
+                    ObjectBuilder::new()
+                        .schema_type(SchemaType::Integer)
+                        .example(Some(serde_json::value::Value::Number(
+                            serde_json::Number::from(401),
+                        ))),
+                )
+                .required("http_status")
+                .into(),
+        )
     }
 }
 
@@ -132,6 +176,7 @@ impl ResponseError for AuthError {
 /// JSON representation of [`AuthError`].
 #[derive(Serialize)]
 struct JsonAuthError<'a> {
-    code: AuthErrorKind,
-    message: &'a str,
+    error_code: AuthErrorKind,
+    description: &'a str,
+    http_status: u16,
 }
