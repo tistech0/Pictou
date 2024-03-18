@@ -90,7 +90,7 @@ async fn init() -> anyhow::Result<()> {
             .service(
                 web::scope("/api")
                     .configure(api::configure)
-                    .configure(|cfg| auth::routes(auth_clients, cfg)),
+                    .configure(|cfg| auth::configure(auth_clients, cfg)),
             )
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")

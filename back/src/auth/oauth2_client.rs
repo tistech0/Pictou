@@ -18,6 +18,7 @@ use oauth2::{
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use time::OffsetDateTime;
 use tracing::{error, info, warn};
+use utoipa::ToSchema;
 
 use crate::{
     auth::{
@@ -33,9 +34,7 @@ use super::error::AuthError;
 /// Provides references to all currently loaded clients.
 #[derive(Clone)]
 pub struct OAuth2Clients {
-    google: Option<Arc<GoogleOAuth2Client>>,
-    /// Same pointer as `google`, but as a trait object.
-    google_dyn: Option<Arc<DynOAuth2Client>>,
+    google: Option<Arc<DynOAuth2Client>>,
 }
 
 pub type DynOAuth2Client = dyn OAuth2Client + Send + Sync + 'static;
@@ -50,26 +49,23 @@ impl OAuth2Clients {
             }
             Ok(google) => Some(Arc::new(google)),
         };
-        let google_dyn = google.clone().map(|c| c as Arc<DynOAuth2Client>);
-        OAuth2Clients { google, google_dyn }
-    }
-
-    /// Returns a reference to the Google client, if enabled.
-    pub fn google(&self) -> Option<&Arc<GoogleOAuth2Client>> {
-        self.google.as_ref()
+        OAuth2Clients {
+            google: google.map(|c| c as Arc<DynOAuth2Client>),
+        }
     }
 
     /// Returns the coresponding OAuth2 client for the given `ClientType` as a trait object
     /// pointer.
     pub fn get(&self, client_type: ClientType) -> Option<&Arc<DynOAuth2Client>> {
         match client_type {
-            ClientType::Google => self.google_dyn.as_ref(),
+            ClientType::Google => self.google.as_ref(),
         }
     }
 }
 
-#[derive(DbEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(DbEnum, Debug, Clone, Copy, PartialEq, Eq, Deserialize, ToSchema)]
 #[ExistingTypePath = "crate::schema::sql_types::AuthType"]
+#[serde(rename_all = "snake_case")]
 pub enum ClientType {
     Google,
 }
