@@ -12,6 +12,7 @@ use std::str::from_utf8;
 use utoipa::ToSchema;
 
 #[derive(Clone, Deserialize, Serialize, Debug, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiErrorCode {
     Unknown,
     QueryPayloadError,
@@ -23,7 +24,6 @@ pub enum ApiErrorCode {
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub struct ApiError {
     http_status: u16,
     error_code: ApiErrorCode,
