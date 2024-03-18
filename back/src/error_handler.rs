@@ -23,21 +23,22 @@ pub enum ApiErrorCode {
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
-pub struct APIError {
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub struct ApiError {
     http_status: u16,
     error_code: ApiErrorCode,
     description: String,
 }
 
-impl Display for APIError {
+impl Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl APIError {
+impl ApiError {
     pub fn new(http_status: StatusCode, error_code: ApiErrorCode, description: &str) -> Self {
-        APIError {
+        ApiError {
             http_status: http_status.as_u16(),
             error_code,
             description: description.into(),
@@ -45,7 +46,7 @@ impl APIError {
     }
 
     pub fn query_payload_error(description: &str) -> Self {
-        APIError::new(
+        ApiError::new(
             StatusCode::BAD_REQUEST,
             ApiErrorCode::QueryPayloadError,
             description,
@@ -53,7 +54,7 @@ impl APIError {
     }
 
     pub fn json_payload_error(description: &str) -> Self {
-        APIError::new(
+        ApiError::new(
             StatusCode::BAD_REQUEST,
             ApiErrorCode::JsonPayloadError,
             description,
@@ -61,7 +62,7 @@ impl APIError {
     }
 
     pub fn path_error(description: &str) -> Self {
-        APIError::new(
+        ApiError::new(
             StatusCode::BAD_REQUEST,
             ApiErrorCode::PathError,
             description,
@@ -69,7 +70,7 @@ impl APIError {
     }
 
     pub fn not_found_error(resource_name: &str) -> Self {
-        APIError {
+        ApiError {
             http_status: StatusCode::NOT_FOUND.as_u16(),
             error_code: ApiErrorCode::NotFoundError,
             description: format!("{} not found", resource_name),
@@ -77,7 +78,7 @@ impl APIError {
     }
 
     pub fn unauthorized_error() -> Self {
-        APIError {
+        ApiError {
             http_status: StatusCode::UNAUTHORIZED.as_u16(),
             error_code: ApiErrorCode::UnauthorizedError,
             description: "Trying to access private resource with missing or invalid credentials"
@@ -86,7 +87,7 @@ impl APIError {
     }
 
     pub fn forbidden_error() -> Self {
-        APIError {
+        ApiError {
             http_status: StatusCode::FORBIDDEN.as_u16(),
             error_code: ApiErrorCode::ForbiddenError,
             description: "Trying to access private resource with valid credentials but insufficient access rights"
@@ -96,7 +97,7 @@ impl APIError {
 }
 
 // Important: implement ResponseError to render as actix_web::Error
-impl actix_web::ResponseError for APIError {
+impl actix_web::ResponseError for ApiError {
     fn status_code(&self) -> StatusCode {
         StatusCode::from_u16(self.http_status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
     }
@@ -114,7 +115,7 @@ fn make_error_response<B: MessageBody>(
     error_code: ApiErrorCode,
     http_status: StatusCode,
 ) -> Result<ErrorHandlerResponse<B>> {
-    let api_error = APIError {
+    let api_error = ApiError {
         http_status: http_status.as_u16(),
         error_code,
         description,
@@ -132,7 +133,7 @@ pub fn json_error_handler<B: MessageBody>(
     // Handle error response
     if res.response().error().is_some() {
         let error = res.response().error().ok_or_else(|| {
-            APIError::new(
+            ApiError::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ApiErrorCode::Unknown,
                 "An error occurred",
@@ -140,7 +141,7 @@ pub fn json_error_handler<B: MessageBody>(
         })?;
 
         // Already handled error
-        if let Some(_err) = error.as_error::<APIError>() {
+        if let Some(_err) = error.as_error::<ApiError>() {
             return Ok(ErrorHandlerResponse::Response(res.map_into_left_body()));
         }
         // Actix error types handled here
@@ -187,5 +188,5 @@ pub fn path_error_handler(
     e: actix_web::error::PathError,
     _req: &HttpRequest,
 ) -> actix_web::error::Error {
-    APIError::path_error(&e.to_string()).into()
+    ApiError::path_error(&e.to_string()).into()
 }
