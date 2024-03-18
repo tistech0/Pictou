@@ -38,8 +38,17 @@ pub fn routes(client: Arc<GoogleOAuth2Client>, service_cfg: &mut ServiceConfig) 
         .app_data(web::Data::from(client));
 }
 
+/// Authorization endpoint for Google OAuth2.
+///
+/// User informations are sent to /auth/google/callback when the user is authenticated.
+#[utoipa::path(
+    responses(
+        (status = StatusCode::FOUND, description = "Redirected to google authentication or to /auth/google/callback"),
+    ),
+    tag="auth"
+)]
 #[get("/auth/google/authorize")]
-async fn authorize(
+pub async fn authorize(
     client: web::Data<GoogleOAuth2Client>,
     session: Session,
 ) -> Result<HttpResponse, Error> {
@@ -47,8 +56,18 @@ async fn authorize(
     oauth2_client::begin_authorization(client.as_ref(), session)
 }
 
+/// Google OAuth2 callback endpoint. Must not be called directly.
+///
+/// This endpoint is called by Google after the user has authenticated.
+/// This documentation is here to show the structure of the body received by this endpoint, not to call this endpoint.
+#[utoipa::path(
+    responses(
+        (status = StatusCode::OK, body = AuthenticationResponse, description = "Google authentication succeeded and user can use the access token as a bearer."),
+    ),
+    tag="auth"
+)]
 #[get("/auth/google/callback")]
-async fn callback(
+pub async fn callback(
     client: web::Data<GoogleOAuth2Client>,
     session: Session,
     query: Query<OAuth2AuthorizationResponse>,
@@ -109,7 +128,7 @@ impl GoogleOAuth2Client {
         )
         .set_revocation_uri(open_id_config.revocation_endpoint)
         .set_redirect_uri(RedirectUrl::from_url(
-            app_cfg.base_url.join("auth/google/callback").unwrap(),
+            app_cfg.base_url.join("api/auth/google/callback").unwrap(),
         ));
 
         Ok(Self {

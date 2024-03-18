@@ -6,9 +6,10 @@ use std::{
 use actix_web::{HttpResponse, ResponseError};
 use oauth2::http::StatusCode;
 use serde::Serialize;
+use utoipa::ToSchema;
 
 #[non_exhaustive]
-#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AuthErrorKind {
     InvalidCredentials,
@@ -63,9 +64,10 @@ impl AuthErrorKind {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, ToSchema)]
 pub struct AuthError {
     kind: AuthErrorKind,
+    #[schema(value_type = String)]
     cause: Option<Box<dyn StdError + 'static>>,
 }
 
