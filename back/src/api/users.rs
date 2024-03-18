@@ -1,7 +1,8 @@
-use crate::{api::json_payload_error_example, error_handler::APIError};
+use crate::{api::json_payload_error_example, error_handler::ApiError};
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 const CONTEXT_PATH: &str = "/users";
 
@@ -12,7 +13,7 @@ pub struct UserPost {
 
 #[derive(Deserialize, Serialize, ToSchema)]
 pub struct User {
-    id: u32,
+    id: Uuid,
     name: String,
 }
 
@@ -28,7 +29,7 @@ pub struct UserList {
     context_path = CONTEXT_PATH,
     responses(
         (status = StatusCode::OK, description = "User's properties retrieved successfully", body = User, content_type = "application/json"),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users"
 )]
@@ -36,7 +37,7 @@ pub struct UserList {
 pub async fn get_self() -> impl Responder {
     todo!("Implement get_self method.");
     HttpResponse::Ok().json(User {
-        id: 1,
+        id: Uuid::new_v4(),
         name: "John Doe".to_string(),
     })
 }
@@ -48,7 +49,7 @@ pub async fn get_self() -> impl Responder {
     context_path = CONTEXT_PATH,
     responses(
         (status = StatusCode::OK, description = "Users retrieved successfully", body = UserList, content_type = "application/json"),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users"
 )]
@@ -65,8 +66,8 @@ pub async fn get_users() -> impl Responder {
     context_path = CONTEXT_PATH,
     responses(
         (status = StatusCode::OK, description = "Successfully patched", body = User),
-        (status = StatusCode::BAD_REQUEST, description = "Invalid request data", body = APIError, example = json!(json_payload_error_example()), content_type = "application/json"),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::BAD_REQUEST, description = "Invalid request data", body = ApiError, example = json!(json_payload_error_example()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users",
     request_body(
@@ -79,7 +80,7 @@ pub async fn get_users() -> impl Responder {
 pub async fn edit_self(patch: web::Json<UserPost>) -> impl Responder {
     todo!("Implement edit_self method.");
     HttpResponse::Ok().json(User {
-        id: 1,
+        id: Uuid::new_v4(),
         name: "John Doe".to_string(),
     })
 }
@@ -90,11 +91,11 @@ pub async fn edit_self(patch: web::Json<UserPost>) -> impl Responder {
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
-        ("id" = u16, Path, description="User to delete", example=1),
+        ("id" = Uuid, Path, description="User to delete", example="e58ed763-928c-4155-bee9-fdbaaadc15f3"),
     ),
     responses(
         (status = StautsCode::NO_CONTENT, description = "Successfully deleted"),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
+        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
     ),
     tag="users"
 )]
