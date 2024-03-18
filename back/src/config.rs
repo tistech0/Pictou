@@ -1,6 +1,7 @@
 use std::{
-    env, fmt,
-    fmt::{Debug, Formatter},
+    env,
+    fmt::{self, Debug, Formatter},
+    sync::{Arc, OnceLock},
 };
 
 use time::Duration;
@@ -29,7 +30,21 @@ impl AppConfiguration {
     /// Creates a new instance of `AppConfiguration` from environment variables.
     /// If any of the required environment variables are missing, an error is returned.
     /// Use [`dotenv::dotenv`] to load environment variables from a file.
-    pub fn from_env() -> anyhow::Result<AppConfiguration> {
+    ///
+    /// Re-uses the same instance if called multiple times.
+    pub fn from_env() -> anyhow::Result<Arc<AppConfiguration>> {
+        static INSTANCE: OnceLock<Arc<AppConfiguration>> = OnceLock::new();
+
+        match INSTANCE.get() {
+            Some(app_cfg) => Ok(app_cfg.clone()),
+            None => {
+                let app_cfg = Self::_from_env()?;
+                Ok(INSTANCE.get_or_init(move || Arc::new(app_cfg)).clone())
+            }
+        }
+    }
+
+    fn _from_env() -> anyhow::Result<AppConfiguration> {
         Ok(AppConfiguration {
             app_name: env::var("APP_NAME")?,
             postgres_host: env::var("POSTGRES_HOST")?,

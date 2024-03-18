@@ -55,7 +55,7 @@ async fn init() -> anyhow::Result<()> {
 
     dotenv().context("failed to read environment from .env")?;
 
-    let app_cfg = web::Data::new(AppConfiguration::from_env()?);
+    let app_cfg = web::Data::from(AppConfiguration::from_env()?);
     debug!(?app_cfg, "loaded configuration from environment");
 
     let address = app_cfg.address.to_owned();
