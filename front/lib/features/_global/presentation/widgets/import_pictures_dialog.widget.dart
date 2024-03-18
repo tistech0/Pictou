@@ -39,9 +39,7 @@ class _NewAlbumDialogState extends State<ImportPicturesDialog> {
           ElevatedButton(
             onPressed: () async {
               final List<XFile> images = await _picker.pickMultiImage();
-              // Ici, ajoutez votre logique pour importer les images dans l'album sélectionné
               if (images.isNotEmpty) {
-                // Logique pour traiter les images sélectionnées
                 print('Images sélectionnées pour $_selectedAlbum');
               }
             },
