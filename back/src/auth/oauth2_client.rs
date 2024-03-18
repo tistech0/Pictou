@@ -22,7 +22,7 @@ use tracing::{error, info, warn};
 use crate::{
     auth::{
         error::AuthErrorKind, google::GoogleOAuth2Client, AuthContext, AuthenticationResponse,
-        PersistedUserInfo, ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME,
+        PersistedUserInfo,
     },
     config::AppConfiguration,
     database::{self, Database, DatabaseError},
@@ -54,12 +54,12 @@ impl OAuth2Clients {
         OAuth2Clients { google, google_dyn }
     }
 
-    /// Returns a refrence to the Google client, if enabled.
+    /// Returns a reference to the Google client, if enabled.
     pub fn google(&self) -> Option<&Arc<GoogleOAuth2Client>> {
         self.google.as_ref()
     }
 
-    /// Returns the coressponding OAuth2 client for the given `ClientType` as a trait object
+    /// Returns the coresponding OAuth2 client for the given `ClientType` as a trait object
     /// pointer.
     pub fn get(&self, client_type: ClientType) -> Option<&Arc<DynOAuth2Client>> {
         match client_type {
@@ -138,13 +138,13 @@ where
 
 /// Finishes the OAuth2 authorization process by exchanging the authorization code for an access token.
 /// Called by the OAuth2 provider after the user has authorized the application.
-#[tracing::instrument(skip(response, session, db, jwt_secret))]
+#[tracing::instrument(skip(response, session, db, app_cfg))]
 pub async fn finish_authorization<C>(
     client: &C,
     response: OAuth2AuthorizationResponse,
     session: Session,
     db: Arc<Database>,
-    jwt_secret: &[u8],
+    app_cfg: &AppConfiguration,
 ) -> ActixResult<HttpResponse>
 where
     C: OAuth2Client + ?Sized,
@@ -162,12 +162,12 @@ where
     })?;
     let auth_type = client.client_type();
     let refresh_token = AuthContext::generate_refresh_token();
-    let refresh_token_exp = OffsetDateTime::now_utc() + REFRESH_TOKEN_LIFETIME;
+    let refresh_token_exp = OffsetDateTime::now_utc() + app_cfg.refresh_token_lifetime;
 
     info!(
         email,
         ?auth_type,
-        "received user info from OAuth2 provider, saving user to database"
+        "recieved user info from OAuth2 provider, saving user to database"
     );
 
     let user: PersistedUserInfo = database::open(db, move |conn| {
@@ -216,8 +216,13 @@ where
     .await
     .map_err(ActixError::from)?;
 
-    let access_token_exp = OffsetDateTime::now_utc() + ACCESS_TOKEN_LIFETIME;
-    let access_token = AuthContext::encode_jwt(user.user_id, access_token_exp, jwt_secret)?;
+    let access_token_exp = OffsetDateTime::now_utc() + app_cfg.access_token_lifetime;
+    let access_token = AuthContext::encode_jwt(
+        user.user_id,
+        access_token_exp,
+        &app_cfg.app_name,
+        &app_cfg.jwt_secret,
+    )?;
 
     Ok(HttpResponse::Ok().json(AuthenticationResponse {
         user,

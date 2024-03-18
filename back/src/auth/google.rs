@@ -61,7 +61,7 @@ async fn callback(
         query.into_inner(),
         session,
         db.into_inner(),
-        &app_cfg.jwt_secret,
+        app_cfg.as_ref(),
     )
     .await
 }
@@ -108,9 +108,9 @@ impl GoogleOAuth2Client {
             Some(open_id_config.token_endpoint),
         )
         .set_revocation_uri(open_id_config.revocation_endpoint)
-        .set_redirect_uri(
-            RedirectUrl::new("http://localhost:8000/auth/google/callback".to_string()).unwrap(),
-        );
+        .set_redirect_uri(RedirectUrl::from_url(
+            app_cfg.base_url.join("auth/google/callback").unwrap(),
+        ));
 
         Ok(Self {
             client,

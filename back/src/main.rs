@@ -7,13 +7,13 @@ use actix_web::{
 };
 use anyhow::Context;
 use dotenv::dotenv;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use tracing_actix_web::TracingLogger;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-mod auth;
 mod api;
+mod auth;
 mod config;
 mod database;
 mod error_handler;
@@ -56,6 +56,8 @@ async fn init() -> anyhow::Result<()> {
     dotenv().context("failed to read environment from .env")?;
 
     let app_cfg = web::Data::new(AppConfiguration::from_env()?);
+    debug!(?app_cfg, "loaded configuration from environment");
+
     let address = app_cfg.address.to_owned();
     let port = app_cfg.port;
     let database = web::Data::new(Database::new(&app_cfg)?);

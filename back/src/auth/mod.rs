@@ -1,4 +1,4 @@
-use std::error::Error as StdError;
+use std::{error::Error as StdError, sync::OnceLock};
 
 use actix_web::{
     dev::Payload,
@@ -12,9 +12,8 @@ use diesel::{Queryable, Selectable};
 use futures_util::future::LocalBoxFuture;
 use jsonwebtoken as jwt;
 use oauth2::RefreshToken;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -41,9 +40,6 @@ pub fn routes(clients: web::Data<OAuth2Clients>, service_cfg: &mut ServiceConfig
     }
     service_cfg.app_data(clients);
 }
-
-const REFRESH_TOKEN_LIFETIME: Duration = Duration::days(30);
-const ACCESS_TOKEN_LIFETIME: Duration = Duration::minutes(3);
 
 /// Allows the user to request another access token after it expired.
 /// This route checks the opaque refresh token against the database before granting (or not) the new access token.
@@ -90,9 +86,14 @@ async fn refresh_token(
 
     check_user_authorized_oauth2(clients, client_type, oauth_token, &email).await?;
 
-    info!(%email, %user_id, lifetime_secs = ACCESS_TOKEN_LIFETIME.whole_seconds(), "refreshing access token of user");
-    let access_token_exp = OffsetDateTime::now_utc() + ACCESS_TOKEN_LIFETIME;
-    let access_token = AuthContext::encode_jwt(user_id, access_token_exp, &app_cfg.jwt_secret)?;
+    info!(%email, %user_id, lifetime_secs = app_cfg.access_token_lifetime.whole_seconds(), "refreshing access token of user");
+    let access_token_exp = OffsetDateTime::now_utc() + app_cfg.access_token_lifetime;
+    let access_token = AuthContext::encode_jwt(
+        user_id,
+        access_token_exp,
+        &app_cfg.app_name,
+        &app_cfg.jwt_secret,
+    )?;
 
     // Regenerate a new refresh token and update the database
     let user_info = database::open(db, move |conn| {
@@ -102,7 +103,8 @@ async fn refresh_token(
         diesel::update(users::table.filter(users::id.eq(user_id)))
             .set((
                 users::refresh_token.eq(&AuthContext::generate_refresh_token()),
-                users::refresh_token_exp.eq(OffsetDateTime::now_utc() + REFRESH_TOKEN_LIFETIME),
+                users::refresh_token_exp
+                    .eq(OffsetDateTime::now_utc() + app_cfg.refresh_token_lifetime),
             ))
             .returning(PersistedUserInfo::as_returning())
             .get_result(conn)
@@ -206,7 +208,7 @@ impl AuthContext {
             })?;
 
         let token = Self::parse_bearer_token(&req)?;
-        let auth_token = Self::decode_jwt(token, &app_cfg.jwt_secret)?;
+        let auth_token = Self::decode_jwt(token, &app_cfg.app_name, &app_cfg.jwt_secret)?;
 
         Ok(AuthContext {
             user_id: auth_token.claims.sub,
@@ -224,22 +226,45 @@ impl AuthContext {
     }
 
     /// Attempts to decode a JWT token using the provided secret.
-    fn decode_jwt(token: &str, secret: &[u8]) -> ActixResult<jwt::TokenData<AuthenticationToken>> {
+    fn decode_jwt(
+        token: &str,
+        app_name: &str,
+        secret: &[u8],
+    ) -> ActixResult<jwt::TokenData<AuthenticationToken>> {
         let key = jwt::DecodingKey::from_secret(secret);
 
-        jwt::decode::<AuthenticationToken>(token, &key, &JWT_VALIDATION)
+        static CACHED_JWT_VALIDATION: OnceLock<jwt::Validation> = OnceLock::new();
+
+        let jwt_validation: &'static jwt::Validation = CACHED_JWT_VALIDATION.get_or_init(|| {
+            let mut validation = jwt::Validation::new(jwt::Algorithm::HS256);
+
+            validation.validate_exp = true;
+            validation.validate_aud = true;
+
+            validation.set_audience(&[app_name]);
+            validation.set_issuer(&[app_name]);
+
+            validation
+        });
+
+        jwt::decode::<AuthenticationToken>(token, &key, jwt_validation)
             .map_err(|error| AuthErrorKind::InvalidToken.with_cause(error))
             .map_err(ActixError::from)
     }
 
     #[tracing::instrument(skip(secret))]
-    fn encode_jwt(subject: Uuid, expires_at: OffsetDateTime, secret: &[u8]) -> ActixResult<String> {
+    fn encode_jwt(
+        subject: Uuid,
+        expires_at: OffsetDateTime,
+        app_name: &str,
+        secret: &[u8],
+    ) -> ActixResult<String> {
         let header = jwt::Header::new(jwt::Algorithm::HS256);
         let key = jwt::EncodingKey::from_secret(secret);
 
         let claims = AuthenticationToken {
-            aud: "pictou".to_owned(),
-            iss: "pictou".to_owned(),
+            aud: app_name.to_owned(),
+            iss: app_name.to_owned(),
             exp: expires_at.unix_timestamp(),
             sub: subject,
         };
@@ -263,18 +288,6 @@ impl AuthContext {
     }
 }
 
-static JWT_VALIDATION: Lazy<jwt::Validation> = Lazy::new(|| {
-    let mut validation = jwt::Validation::new(jwt::Algorithm::HS256);
-
-    validation.validate_exp = true;
-    validation.validate_aud = true;
-
-    validation.set_audience(&["pictou"]);
-    validation.set_issuer(&["pictou"]);
-
-    validation
-});
-
 /// JWT claims
 #[derive(Debug, Serialize, Deserialize)]
 struct AuthenticationToken {
@@ -288,6 +301,7 @@ struct AuthenticationToken {
 mod tests {
     use super::*;
     use actix_web::{http::StatusCode, test::TestRequest, App, Responder};
+    use time::Duration;
     use tracing_test::traced_test;
 
     // {
@@ -362,21 +376,21 @@ mod tests {
 
     #[test]
     fn test_decode_jwt() {
-        assert!(AuthContext::decode_jwt("invalid token", &[]).is_err());
+        assert!(AuthContext::decode_jwt("invalid token", "pictou", &[]).is_err());
         assert!(
-            AuthContext::decode_jwt(EXPIRED_JWT, b"secret").is_err(),
+            AuthContext::decode_jwt(EXPIRED_JWT, "pictou", b"secret").is_err(),
             "expired token should fail"
         );
         assert!(
-            AuthContext::decode_jwt(WRONG_AUD_JWT, b"secret").is_err(),
+            AuthContext::decode_jwt(WRONG_AUD_JWT, "pictou", b"secret").is_err(),
             "token with wrong audience should fail"
         );
         assert!(
-            AuthContext::decode_jwt(VALID_JWT, b"wrong secret").is_err(),
+            AuthContext::decode_jwt(VALID_JWT, "pictou", b"wrong secret").is_err(),
             "invalid secret should fail"
         );
 
-        let Ok(valid_token) = AuthContext::decode_jwt(VALID_JWT, b"secret") else {
+        let Ok(valid_token) = AuthContext::decode_jwt(VALID_JWT, "pictou", b"secret") else {
             panic!("valid token failed to decode")
         };
         assert_eq!(
@@ -393,11 +407,13 @@ mod tests {
         let encodded = AuthContext::encode_jwt(
             Uuid::parse_str("f09d493d-a117-465d-84de-96fb4469dd40").unwrap(),
             expires_at,
+            "pictou",
             secret,
         )
         .expect("failed to encode token");
 
-        let decoded = AuthContext::decode_jwt(&encodded, secret).expect("failed to decode token");
+        let decoded =
+            AuthContext::decode_jwt(&encodded, "pictou", secret).expect("failed to decode token");
 
         assert_eq!(decoded.header.alg, jwt::Algorithm::HS256);
         assert_eq!(
