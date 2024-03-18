@@ -19,12 +19,15 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::{
-    auth::oauth2_client::{ClientType, DynOAuth2Client},
+    auth::{
+        error::AuthErrorKind,
+        oauth2_client::{ClientType, DynOAuth2Client},
+    },
     config::AppConfiguration,
     database::{self, Database, DatabaseError},
-    error::JsonHttpError,
 };
 
+mod error;
 mod google;
 mod oauth2_client;
 
@@ -82,9 +85,8 @@ async fn refresh_token(
         })
         .await?;
 
-    let (email, client_type, oauth_token) = result.ok_or_else(|| {
-        JsonHttpError::unauthorized("INVALID_CREDENTIALS", "invalid or expired credentials")
-    })?;
+    let (email, client_type, oauth_token) =
+        result.ok_or_else(|| AuthErrorKind::InvalidCredentials.to_error())?;
 
     check_user_authorized_oauth2(clients, client_type, oauth_token, &email).await?;
 
@@ -141,10 +143,7 @@ async fn check_user_authorized_oauth2(
             email = user_info.email,
             "user email does not match the one in the database"
         );
-        Err(
-            JsonHttpError::unauthorized("INVALID_CREDENTIALS", "invalid or expired credentials")
-                .into(),
-        )
+        Err(AuthErrorKind::InvalidCredentials.to_error().into())
     } else {
         Ok(())
     }
@@ -220,12 +219,7 @@ impl AuthContext {
             .get(header::AUTHORIZATION)
             .and_then(|auth| auth.to_str().ok())
             .and_then(|auth| auth.strip_prefix("Bearer "))
-            .ok_or_else(|| {
-                JsonHttpError::unauthorized(
-                    "INVALID_AUTHORIZATION_HEADER",
-                    "invalid or missing authorization header",
-                )
-            })
+            .ok_or_else(|| AuthErrorKind::InvalidAuthorizationHeader.to_error())
             .map_err(ActixError::from)
     }
 
@@ -234,7 +228,7 @@ impl AuthContext {
         let key = jwt::DecodingKey::from_secret(secret);
 
         jwt::decode::<AuthenticationToken>(token, &key, &JWT_VALIDATION)
-            .map_err(|_| JsonHttpError::unauthorized("INVALID_TOKEN", "malformed or invalid token"))
+            .map_err(|error| AuthErrorKind::InvalidToken.with_cause(error))
             .map_err(ActixError::from)
     }
 

@@ -7,6 +7,7 @@ use actix_web::{
     error::{Error as ActixError, ErrorUnauthorized, Result as ActixResult},
     web, HttpResponse,
 };
+use anyhow::anyhow;
 use diesel::{prelude::Insertable, query_builder::AsChangeset};
 use diesel_derive_enum::DbEnum;
 use oauth2::{
@@ -20,13 +21,14 @@ use tracing::{error, info, warn};
 
 use crate::{
     auth::{
-        google::GoogleOAuth2Client, AuthContext, AuthenticationResponse, PersistedUserInfo,
-        ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME,
+        error::AuthErrorKind, google::GoogleOAuth2Client, AuthContext, AuthenticationResponse,
+        PersistedUserInfo, ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME,
     },
     config::AppConfiguration,
     database::{self, Database, DatabaseError},
-    error::JsonHttpError,
 };
+
+use super::error::AuthError;
 
 /// Provides references to all currently loaded clients.
 #[derive(Clone)]
@@ -156,7 +158,7 @@ where
 
     let email = user_info.email.clone().ok_or_else(|| {
         error!("missing email in user info response");
-        JsonHttpError::internal_server_error("OAUTH2_PROVIDER_ERROR", "internal error")
+        AuthErrorKind::OAuth2ProviderError.to_error()
     })?;
     let auth_type = client.client_type();
     let refresh_token = AuthContext::generate_refresh_token();
@@ -231,14 +233,11 @@ where
 fn handle_authorization_response(
     response: OAuth2AuthorizationResponse,
     expected_state: &str,
-) -> Result<AuthorizationCode, JsonHttpError> {
+) -> Result<AuthorizationCode, AuthError> {
     match response {
         OAuth2AuthorizationResponse {
             error: Some(error), ..
-        } if error == "access_denied" => Err(JsonHttpError::unauthorized(
-            "OAUTH2_ACCESS_DENIED",
-            "access denied by user",
-        )),
+        } if error == "access_denied" => Err(AuthErrorKind::OAuth2AuthorizationDenied.to_error()),
         OAuth2AuthorizationResponse {
             error: Some(error),
             error_description,
@@ -246,20 +245,14 @@ fn handle_authorization_response(
             ..
         } => {
             warn!(
-                ?error,
+                error,
                 error_description, error_uri, "Authorization provider returned an error"
             );
-            Err(JsonHttpError::internal_server_error(
-                "OAUTH2_PROVIDER_ERROR",
-                "an error occurred while processing the authorization request",
-            ))
+            Err(AuthErrorKind::OAuth2ProviderError.with_cause(anyhow!(error)))
         }
         OAuth2AuthorizationResponse { code: None, .. } => {
             warn!("Missing code in authorization response");
-            Err(JsonHttpError::internal_server_error(
-                "OAUTH2_PROVIDER_ERROR",
-                "an error occurred while processing the authorization request",
-            ))
+            Err(AuthErrorKind::OAuth2ProviderError.to_error())
         }
         OAuth2AuthorizationResponse {
             code: Some(code),
@@ -267,10 +260,7 @@ fn handle_authorization_response(
             ..
         } => {
             if state != expected_state {
-                Err(JsonHttpError::forbidden(
-                    "OAUTH2_INVALID_STATE",
-                    "invalid state token",
-                ))
+                Err(AuthErrorKind::OAuth2InvalidState.to_error())
             } else {
                 Ok(code)
             }
@@ -283,7 +273,7 @@ async fn fetch_tokens<C>(
     client: &C,
     pkce_secret: String,
     code: AuthorizationCode,
-) -> Result<BasicTokenResponse, JsonHttpError>
+) -> Result<BasicTokenResponse, AuthError>
 where
     C: OAuth2Client + ?Sized,
 {
@@ -295,32 +285,26 @@ where
         .request_async(oauth2::reqwest::async_http_client)
         .await
         .map_err(|error| {
-            match error {
+            match &error {
                 RequestTokenError::ServerResponse(error) => {
-                    warn!(%error, "oauth2 provider returned error")
+                    warn!(%error, "oauth2 provider returned error");
                 }
                 RequestTokenError::Request(error) => {
-                    warn!(%error, "error while requesting oauth code exchange")
+                    warn!(%error, "error while requesting oauth code exchange");
                 }
                 RequestTokenError::Parse(error, _) => {
-                    warn!(%error, "failed to parse oauth2 provider response")
+                    warn!(%error, "failed to parse oauth2 provider response");
                 }
                 RequestTokenError::Other(error) => {
-                    warn!(%error, "error while exchanging oauth code")
+                    warn!(%error, "error while exchanging oauth code");
                 }
-            }
-            JsonHttpError::internal_server_error(
-                "OAUTH2_PROVIDER_ERROR",
-                "an error occurred while processing the authorization request",
-            )
+            };
+            AuthErrorKind::OAuth2ProviderError.with_cause(error)
         })
 }
 
 #[tracing::instrument(skip(token))]
-pub async fn refresh_token<C>(
-    client: &C,
-    token: &RefreshToken,
-) -> Result<AccessToken, JsonHttpError>
+pub async fn refresh_token<C>(client: &C, token: &RefreshToken) -> Result<AccessToken, AuthError>
 where
     C: OAuth2Client + ?Sized,
 {
@@ -330,29 +314,26 @@ where
         .await
         .map(|r| r.access_token().clone())
         .map_err(|error| {
-            match error {
+            match &error {
                 RequestTokenError::ServerResponse(error) => {
-                    warn!(%error, "oauth2 provider returned error")
+                    warn!(%error, "oauth2 provider returned error");
                 }
                 RequestTokenError::Request(error) => {
-                    warn!(%error, "error while requesting oauth token refresh")
+                    warn!(%error, "error while requesting oauth token refresh");
                 }
                 RequestTokenError::Parse(error, _) => {
-                    warn!(%error, "failed to parse oauth2 provider response")
+                    warn!(%error, "failed to parse oauth2 provider response");
                 }
                 RequestTokenError::Other(error) => {
-                    warn!(%error, "error while exchanging oauth refresh token")
+                    warn!(%error, "error while exchanging oauth refresh token");
                 }
-            }
-            JsonHttpError::internal_server_error(
-                "OAUTH2_PROVIDER_ERROR",
-                "an error occurred while processing the authorization request",
-            )
+            };
+            AuthErrorKind::OAuth2ProviderError.with_cause(error)
         })
 }
 
 #[tracing::instrument(skip(token))]
-pub async fn fetch_user_info<C>(client: &C, token: &AccessToken) -> Result<UserInfo, JsonHttpError>
+pub async fn fetch_user_info<C>(client: &C, token: &AccessToken) -> Result<UserInfo, AuthError>
 where
     C: OAuth2Client + ?Sized,
 {
@@ -366,7 +347,7 @@ where
                 error = &error as &dyn StdError,
                 "failed to create HTTP client"
             );
-            JsonHttpError::internal_server_error("INTERNAL_ERROR", "internal error")
+            AuthErrorKind::InternalError.with_cause(error)
         })?;
 
     http_client
@@ -379,7 +360,7 @@ where
                 error = &error as &dyn StdError,
                 "failed to send HTTP request"
             );
-            JsonHttpError::internal_server_error("INTERNAL_ERROR", "internal error")
+            AuthErrorKind::InternalError.with_cause(error)
         })?
         .error_for_status()
         .map_err(|error| {
@@ -387,10 +368,7 @@ where
                 error = &error as &dyn StdError,
                 "recieved error response from OAuth2 provider"
             );
-            JsonHttpError::forbidden(
-                "OAUTH2_FORBIDDEN",
-                "unsufficient permissions from OAuth2 provider",
-            )
+            AuthErrorKind::OAuth2Forbidden.with_cause(error)
         })?
         .json::<UserInfo>()
         .await
@@ -399,10 +377,7 @@ where
                 error = &error as &dyn StdError,
                 "could not parse user info response"
             );
-            JsonHttpError::internal_server_error(
-                "OAUTH2_PROVIDER_ERROR",
-                "an error occurred while processing the authorization request",
-            )
+            AuthErrorKind::OAuth2ProviderError.with_cause(error)
         })
 }
 
@@ -479,7 +454,9 @@ mod tests {
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
+            handle_authorization_response(response, "state")
+                .map(|c| c.secret().clone())
+                .map_err(|e| e.kind()),
             Ok("code".to_owned())
         );
 
@@ -491,11 +468,10 @@ mod tests {
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "invalid").map(|c| c.secret().clone()),
-            Err(JsonHttpError::forbidden(
-                "OAUTH2_INVALID_STATE",
-                "invalid state token"
-            ))
+            handle_authorization_response(response, "invalid")
+                .map(|c| c.secret().clone())
+                .map_err(|e| e.kind()),
+            Err(AuthErrorKind::OAuth2InvalidState)
         );
 
         let response = OAuth2AuthorizationResponse {
@@ -506,11 +482,10 @@ mod tests {
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
-            Err(JsonHttpError::unauthorized(
-                "OAUTH2_ACCESS_DENIED",
-                "access denied by user"
-            ))
+            handle_authorization_response(response, "state")
+                .map(|c| c.secret().clone())
+                .map_err(|e| e.kind()),
+            Err(AuthErrorKind::OAuth2AuthorizationDenied)
         );
 
         let response = OAuth2AuthorizationResponse {
@@ -521,11 +496,10 @@ mod tests {
             error_uri: None,
         };
         assert_eq!(
-            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
-            Err(JsonHttpError::internal_server_error(
-                "OAUTH2_PROVIDER_ERROR",
-                "an error occurred while processing the authorization request"
-            ))
+            handle_authorization_response(response, "state")
+                .map(|c| c.secret().clone())
+                .map_err(|e| e.kind()),
+            Err(AuthErrorKind::OAuth2ProviderError)
         );
 
         let response = OAuth2AuthorizationResponse {
@@ -536,11 +510,10 @@ mod tests {
             error_uri: Some("uri".to_string()),
         };
         assert_eq!(
-            handle_authorization_response(response, "state").map(|c| c.secret().clone()),
-            Err(JsonHttpError::internal_server_error(
-                "OAUTH2_PROVIDER_ERROR",
-                "an error occurred while processing the authorization request"
-            ))
+            handle_authorization_response(response, "state")
+                .map(|c| c.secret().clone())
+                .map_err(|e| e.kind()),
+            Err(AuthErrorKind::OAuth2ProviderError)
         );
     }
 }
