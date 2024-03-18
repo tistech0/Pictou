@@ -52,7 +52,7 @@ pub struct AlbumList {
     ),
     tag="albums",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[get("/{id}")]
@@ -84,7 +84,7 @@ pub async fn get_album(auth: AuthContext, album_uuid: web::Path<Uuid>) -> impl R
     ),
     tag="albums",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[get("")]
@@ -110,7 +110,7 @@ pub async fn get_albums(auth: AuthContext, query: web::Query<PaginationQuery>) -
         content = AlbumPost
     ),
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[post("")]
@@ -152,7 +152,7 @@ pub async fn create_album(auth: AuthContext, album: web::Json<AlbumPost>) -> imp
         content = AlbumPost
     ),
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[patch("/{id}")]
@@ -189,7 +189,7 @@ pub async fn edit_album(
     ),
     tag="albums",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[delete("/{id}")]
@@ -216,7 +216,7 @@ pub async fn delete_album(auth: AuthContext, album_id: web::Path<Uuid>) -> impl 
     ),
     tag="albums",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[post("/{id}/images/{image_id}")]
@@ -253,7 +253,7 @@ pub async fn add_image_to_album(
     ),
     tag="albums",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[delete("/{id}/images/{image_id}")]

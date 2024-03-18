@@ -33,7 +33,7 @@ pub struct UserList {
     ),
     tag="users",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[get("/self")]
@@ -56,7 +56,7 @@ pub async fn get_self(auth: AuthContext) -> impl Responder {
     ),
     tag="users",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[get("")]
@@ -82,7 +82,7 @@ pub async fn get_users(auth: AuthContext) -> impl Responder {
         content = UserPost
     ),
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[patch("/self")]
@@ -108,7 +108,7 @@ pub async fn edit_self(auth: AuthContext, patch: web::Json<UserPost>) -> impl Re
     ),
     tag="users",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[delete("/self")]

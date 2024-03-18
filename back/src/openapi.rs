@@ -33,7 +33,7 @@ impl Modify for SecuritySchemas {
         );
 
         components.add_security_scheme(
-            "Jwt Access Token",
+            "JWT Access Token",
             SecurityScheme::Http(
                 HttpBuilder::new()
                     .scheme(HttpAuthScheme::Bearer)
