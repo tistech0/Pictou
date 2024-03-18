@@ -1,17 +1,9 @@
 use std::{
     borrow::Cow,
     fmt::{self, Debug},
-    sync::Arc,
 };
 
-use actix_session::Session;
-use actix_web::{
-    error::Error,
-    get,
-    web::Query,
-    web::{self, ServiceConfig},
-    HttpResponse,
-};
+use actix_web::web;
 use anyhow::anyhow;
 use oauth2::{
     basic::{BasicClient, BasicErrorResponse, BasicTokenResponse, BasicTokenType},
@@ -19,71 +11,10 @@ use oauth2::{
     PkceCodeChallenge, RedirectUrl, RefreshToken, RefreshTokenRequest, RevocationUrl, TokenUrl,
 };
 use serde::Deserialize;
-use tracing::info;
 
-use crate::{
-    auth::oauth2_client::{self, OAuth2AuthorizationResponse, UserInfoRequest},
-    config::AppConfiguration,
-    database::Database,
-};
+use crate::{auth::oauth2_client::UserInfoRequest, config::AppConfiguration};
 
 use super::oauth2_client::{ClientType, OAuth2Client};
-
-/// Exposes all HTTP routes of this module.
-#[tracing::instrument(skip_all)]
-pub fn routes(client: Arc<GoogleOAuth2Client>, service_cfg: &mut ServiceConfig) {
-    service_cfg
-        .service(authorize)
-        .service(callback)
-        .app_data(web::Data::from(client));
-}
-
-/// Authorization endpoint for Google OAuth2.
-///
-/// User informations are sent to /auth/google/callback when the user is authenticated.
-#[utoipa::path(
-    responses(
-        (status = StatusCode::FOUND, description = "Redirected to google authentication or to /auth/google/callback"),
-    ),
-    tag="auth"
-)]
-#[get("/auth/google/authorize")]
-pub async fn authorize(
-    client: web::Data<GoogleOAuth2Client>,
-    session: Session,
-) -> Result<HttpResponse, Error> {
-    info!("Received request for Google OAuth2 authorization");
-    oauth2_client::begin_authorization(client.as_ref(), session)
-}
-
-/// Google OAuth2 callback endpoint. Must not be called directly.
-///
-/// This endpoint is called by Google after the user has authenticated.
-/// This documentation is here to show the structure of the body received by this endpoint, not to call this endpoint.
-#[utoipa::path(
-    responses(
-        (status = StatusCode::OK, body = AuthenticationResponse, description = "Google authentication succeeded and user can use the access token as a bearer."),
-    ),
-    tag="auth"
-)]
-#[get("/auth/google/callback")]
-pub async fn callback(
-    client: web::Data<GoogleOAuth2Client>,
-    session: Session,
-    query: Query<OAuth2AuthorizationResponse>,
-    db: web::Data<Database>,
-    app_cfg: web::Data<AppConfiguration>,
-) -> Result<HttpResponse, Error> {
-    info!("Received callback request for Google OAuth2 authorization");
-    oauth2_client::finish_authorization(
-        client.as_ref(),
-        query.into_inner(),
-        session,
-        db.into_inner(),
-        app_cfg.as_ref(),
-    )
-    .await
-}
 
 pub struct GoogleOAuth2Client {
     client: BasicClient,
@@ -128,7 +59,7 @@ impl GoogleOAuth2Client {
         )
         .set_revocation_uri(open_id_config.revocation_endpoint)
         .set_redirect_uri(RedirectUrl::from_url(
-            app_cfg.base_url.join("api/auth/google/callback").unwrap(),
+            app_cfg.base_url.join("api/auth/callback/google").unwrap(),
         ));
 
         Ok(Self {

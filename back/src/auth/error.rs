@@ -25,6 +25,8 @@ pub enum AuthErrorKind {
     OAuth2InvalidState,
     #[serde(rename = "OAUTH2_FORBIDDEN")]
     OAuth2Forbidden,
+    #[serde(rename = "INVALID_CLIENT_TYPE")]
+    UnknownProvider,
     #[serde(rename = "INTERNAL_ERROR")]
     InternalError,
 }
@@ -41,6 +43,7 @@ impl AuthErrorKind {
                 "an error occurred while processing the authorization request"
             }
             AuthErrorKind::OAuth2Forbidden => "invalid state token",
+            AuthErrorKind::UnknownProvider => "unknown authentication provider",
             AuthErrorKind::InternalError => "internal server error",
         }
     }
@@ -54,6 +57,7 @@ impl AuthErrorKind {
             AuthErrorKind::OAuth2AuthorizationDenied => StatusCode::FORBIDDEN,
             AuthErrorKind::OAuth2InvalidState => StatusCode::BAD_REQUEST,
             AuthErrorKind::OAuth2Forbidden => StatusCode::FORBIDDEN,
+            AuthErrorKind::UnknownProvider => StatusCode::BAD_REQUEST,
             AuthErrorKind::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

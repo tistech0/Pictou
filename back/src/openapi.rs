@@ -28,7 +28,7 @@ impl Modify for SecuritySchemas {
                 [Flow::ClientCredentials(ClientCredentials::new(
                     app_cfg
                         .base_url
-                        .join("api/google/authorize")
+                        .join("api/authorize/google")
                         .expect("Failed to build Google authorization URL"),
                     Scopes::default(),
                 ))],
@@ -54,16 +54,13 @@ impl Modify for SecuritySchemas {
 #[utoipa_auto_discovery(paths = "( crate::api::images => ./src/api/images.rs );
             ( crate::api::albums => ./src/api/albums.rs );
             ( crate::api::users => ./src/api/users.rs );
-            ( crate::auth::google => ./src/auth/google.rs )")]
+            ( crate::auth::routes => ./src/auth/routes.rs )")]
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "Pictou API",
         version = "0.1.0",
         description = "Pictou is a picture management application."
-    ),
-    paths(
-        crate::auth::refresh_token
     ),
     servers(
         (url = "/api")

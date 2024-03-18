@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::str::from_utf8;
 use utoipa::ToSchema;
 
+use crate::auth::error::AuthError;
+
 #[derive(Clone, Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiErrorCode {
@@ -140,8 +142,11 @@ pub fn json_error_handler<B: MessageBody>(
             )
         })?;
 
-        // Already handled error
+        // Already handled errors
         if let Some(_err) = error.as_error::<ApiError>() {
+            return Ok(ErrorHandlerResponse::Response(res.map_into_left_body()));
+        }
+        if let Some(_err) = error.as_error::<AuthError>() {
             return Ok(ErrorHandlerResponse::Response(res.map_into_left_body()));
         }
         // Actix error types handled here
