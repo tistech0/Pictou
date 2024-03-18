@@ -16,8 +16,6 @@ mod auth;
 mod api;
 mod config;
 mod database;
-// FIXME: remove when OpenAPI-compatible error handling is merged
-mod error;
 mod error_handler;
 mod log;
 mod openapi;
