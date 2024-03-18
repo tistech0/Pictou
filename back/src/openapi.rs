@@ -10,6 +10,8 @@ use crate::api::images::{
 };
 use crate::api::users::{User, UserList, UserPost};
 use crate::api::{Binary, OpenapiUuid};
+use crate::auth::error::{AuthError, AuthErrorKind};
+use crate::auth::{AuthenticationResponse, PersistedUserInfo, RefreshTokenParams};
 use crate::error_handler::{ApiError, ApiErrorCode};
 
 struct SecuritySchemas;
@@ -22,9 +24,9 @@ impl Modify for SecuritySchemas {
             "Google OAuth2",
             SecurityScheme::OAuth2(OAuth2::with_description(
                 [Flow::Implicit(Implicit::with_refresh_url(
-                    "http://localhost:8000/auth/google/authorize",
+                    "http://localhost:8000/api/auth/google/authorize",
                     Scopes::new(),
-                    "http://localhost:8000/auth/refresh",
+                    "http://localhost:8000/api/auth/refresh",
                 ))],
                 "Google OAuth2 flow (no need to fill client id)",
             )),
@@ -47,13 +49,17 @@ impl Modify for SecuritySchemas {
 
 #[utoipa_auto_discovery(paths = "( crate::api::images => ./src/api/images.rs );
             ( crate::api::albums => ./src/api/albums.rs );
-            ( crate::api::users => ./src/api/users.rs )")]
+            ( crate::api::users => ./src/api/users.rs );
+            ( crate::auth::google => ./src/auth/google.rs )")]
 #[derive(OpenApi)]
 #[openapi(
     info(
         title = "Pictou API",
         version = "0.1.0",
         description = "Pictou is a picture management application."
+    ),
+    paths(
+        crate::auth::refresh_token
     ),
     servers(
         (url = "/api")
@@ -62,7 +68,8 @@ impl Modify for SecuritySchemas {
         schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImageMetaData, ImagesMetaData,
             Album, AlbumList, AlbumPost,
             User, UserList, UserPost,
-            ApiErrorCode, ApiError, OpenapiUuid),
+            ApiErrorCode, ApiError, OpenapiUuid,
+            AuthenticationResponse, PersistedUserInfo, AuthError, AuthErrorKind, RefreshTokenParams),
     ),
     tags(
         (name = "images", description = "Images management endpoints."),

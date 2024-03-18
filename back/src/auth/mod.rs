@@ -15,9 +15,11 @@ use oauth2::RefreshToken;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tracing::{error, info, warn};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
+    api::{json_payload_error_example, path_error_example},
     auth::{
         error::AuthErrorKind,
         oauth2_client::{ClientType, DynOAuth2Client},
@@ -26,8 +28,8 @@ use crate::{
     database::{self, Database, DatabaseError},
 };
 
-mod error;
-mod google;
+pub mod error;
+pub mod google;
 mod oauth2_client;
 
 pub use oauth2_client::OAuth2Clients;
@@ -43,9 +45,27 @@ pub fn routes(clients: web::Data<OAuth2Clients>, service_cfg: &mut ServiceConfig
 
 /// Allows the user to request another access token after it expired.
 /// This route checks the opaque refresh token against the database before granting (or not) the new access token.
+#[utoipa::path(
+    responses(
+        (status = StatusCode::OK, description = "Successfully refreshed", body = AuthenticationResponse),
+        (status = StatusCode::BAD_REQUEST, body = ApiError, examples(
+            ("Invalid path parameters" = (value = json!(path_error_example()))),
+            ("Invalid payload" = (value = json!(json_payload_error_example())))),
+            content_type = "application/json"
+        ),
+        (status = StatusCode::UNAUTHORIZED, description = "Credentials are invalid", body = AuthError, content_type = "application/json"),
+        (status = StatusCode::FORBIDDEN, description = "OAuth provider rejected the request", body = AuthError, content_type = "application/json"),
+    ),
+    tag="auth",
+    request_body(
+        description = "User id and refresh token",
+        content_type = "application/json",
+        content = RefreshTokenParams
+    )
+)]
 #[post("/auth/refresh")]
 #[tracing::instrument(skip_all)]
-async fn refresh_token(
+pub async fn refresh_token(
     db: web::Data<Database>,
     json: web::Json<RefreshTokenParams>,
     app_cfg: web::Data<AppConfiguration>,
@@ -151,28 +171,30 @@ async fn check_user_authorized_oauth2(
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct RefreshTokenParams {
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RefreshTokenParams {
     user_id: Uuid,
     /// Base64-encoded opaque binary token, preferably very long
     refresh_token: String,
 }
 
-#[derive(Debug, Serialize)]
-struct AuthenticationResponse {
+#[derive(Debug, Serialize, ToSchema)]
+pub struct AuthenticationResponse {
     #[serde(flatten)]
     user: PersistedUserInfo,
     access_token: String,
+    #[schema(value_type = String, format = "date-time")]
     access_token_exp: OffsetDateTime,
 }
 
-#[derive(Debug, Serialize, Selectable, Queryable)]
+#[derive(Debug, Serialize, Selectable, Queryable, ToSchema)]
 #[diesel(table_name = crate::schema::users)]
-struct PersistedUserInfo {
+pub struct PersistedUserInfo {
     #[diesel(column_name = "id")]
     user_id: Uuid,
     email: String,
     refresh_token: Option<String>,
+    #[schema(value_type = String, format = "date-time")]
     refresh_token_exp: OffsetDateTime,
     name: Option<String>,
     given_name: Option<String>,

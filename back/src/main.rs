@@ -87,13 +87,16 @@ async fn init() -> anyhow::Result<()> {
             )
             .service(hello)
             .service(echo)
-            .service(web::scope("/api").configure(api::configure))
+            .service(
+                web::scope("/api")
+                    .configure(api::configure)
+                    .configure(|cfg| auth::routes(auth_clients, cfg)),
+            )
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
             )
             .service(auth_only)
-            .configure(|cfg| auth::routes(auth_clients, cfg))
             .route("/hey", web::get().to(manual_hello))
     })
     .bind((address.clone(), port))?;
