@@ -38,4 +38,6 @@ diesel migration revert # to revert the last migration
 diesel migration redo # to revert and re-run the last migrationDiesel
 ```
 
+### API documentation
 
+You can access the openapi json schema at `/api-docs/openapi.json` and to the swaggerui at `/swagger-ui/index.html`.
