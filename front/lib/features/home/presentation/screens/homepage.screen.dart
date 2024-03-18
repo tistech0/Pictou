@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:front/features/_global/presentation/widgets/app_bar.widget.dart';
-import 'package:front/features/home/presentation/widgets/triple_view_container.widget.dart';
+import 'package:front/features/home/presentation/widgets/refreshable_album_carousel.widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -30,7 +30,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              AlbumCarouselWidget(),
+              RefreshableAlbumCarouselWidget(),
               Padding(
                 padding: EdgeInsets.only(top: 40.0),
                 child: Text(
@@ -41,7 +41,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-              AlbumCarouselWidget(),
+              RefreshableAlbumCarouselWidget(),
             ],
           ),
         ),
