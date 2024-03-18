@@ -1,4 +1,7 @@
-use crate::api::{image_not_found_example, path_error_example, query_payload_error_example, json_payload_error_example};
+use crate::api::{
+    image_not_found_example, json_payload_error_example, path_error_example,
+    query_payload_error_example,
+};
 use crate::error_handler::APIError;
 use actix_multipart::Multipart;
 use actix_web::{delete, get, http, patch, post, web, Error, HttpResponse, Responder};
@@ -68,7 +71,7 @@ pub struct ImageUploadResponse {
         (status = StatusCode::OK, description = "Image retrieved successfully", body = Binary, content_type = "image/jpeg"),
         (status = StatusCode::BAD_REQUEST, body = APIError, examples(
             ("Invalid query parameters" = (value = json!(query_payload_error_example()))),
-            ("Invalid path parameters" = (value = json!(path_error_example())))), 
+            ("Invalid path parameters" = (value = json!(path_error_example())))),
             content_type = "application/json"
         ),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
@@ -144,7 +147,7 @@ pub async fn upload_image(payload: Multipart) -> impl Responder {
         (status = StatusCode::OK, description = "Successfully patched", body = ImageMetaData),
         (status = StatusCode::BAD_REQUEST, body = APIError, examples(
             ("Invalid path parameters" = (value = json!(path_error_example()))),
-            ("Invalid payload" = (value = json!(json_payload_error_example())))), 
+            ("Invalid payload" = (value = json!(json_payload_error_example())))),
             content_type = "application/json"
         ),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
@@ -185,7 +188,6 @@ pub async fn edit_image(img_id: web::Path<u16>, patch: web::Json<ImagePatch>) ->
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = APIError, example = json!(APIError::unauthorized_error()), content_type = "application/json"),
         (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image (shared image)", body = APIError, example = json!(APIError::forbidden_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = APIError, example = json!(image_not_found_example()), content_type = "application/json")
-    
     ),
     tag="images"
 )]

@@ -7,7 +7,6 @@ use actix_web::{
 };
 use actix_web::{HttpRequest, ResponseError};
 use futures::executor::block_on;
-use mime;
 use serde::{Deserialize, Serialize};
 use std::str::from_utf8;
 use utoipa::ToSchema;
@@ -40,7 +39,7 @@ impl APIError {
     pub fn new(http_status: StatusCode, error_code: ApiErrorCode, description: &str) -> Self {
         APIError {
             http_status: http_status.as_u16(),
-            error_code: error_code,
+            error_code,
             description: description.into(),
         }
     }
@@ -117,8 +116,8 @@ fn make_error_response<B: MessageBody>(
 ) -> Result<ErrorHandlerResponse<B>> {
     let api_error = APIError {
         http_status: http_status.as_u16(),
-        error_code: error_code,
-        description: description,
+        error_code,
+        description,
     };
     Ok(ErrorHandlerResponse::Response(
         ServiceResponse::new(req, api_error.error_response()).map_into_right_body(),
@@ -176,10 +175,7 @@ pub fn json_error_handler<B: MessageBody>(
     let Ok(_body_bytes) = block_on(actix_web::body::to_bytes(res.into_body())) else {
         panic!("Error reading body");
     };
-    let body_str = match from_utf8(&_body_bytes) {
-        Ok(str) => str,
-        Err(_) => "<no message>",
-    };
+    let body_str = from_utf8(&_body_bytes).unwrap_or("<no message>");
     let mut error_code = ApiErrorCode::Unknown;
     if status == StatusCode::NOT_FOUND {
         error_code = ApiErrorCode::NotFoundError;
