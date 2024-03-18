@@ -82,7 +82,7 @@ pub struct ImageUploadResponse {
     ),
     tag="images",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[get("/{id}")]
@@ -117,7 +117,7 @@ pub async fn get_image(
     ),
     tag="images",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[get("")]
@@ -145,7 +145,7 @@ pub async fn get_images(
         content = Binary
     ),
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[post("")]
@@ -182,7 +182,7 @@ pub async fn upload_image(auth: AuthContext, payload: Multipart) -> impl Respond
         content = ImagePatch
     ),
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[patch("/{id}")]
@@ -219,7 +219,7 @@ pub async fn edit_image(
     ),
     tag="images",
     security(
-        ("Jwt Access Token" = [])
+        ("JWT Access Token" = [])
     )
 )]
 #[delete("/{id}")]
