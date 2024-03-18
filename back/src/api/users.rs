@@ -1,4 +1,4 @@
-use crate::{api::json_payload_error_example, error_handler::ApiError};
+use crate::{api::json_payload_error_example, auth::AuthContext, error_handler::ApiError};
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -31,10 +31,13 @@ pub struct UserList {
         (status = StatusCode::OK, description = "User's properties retrieved successfully", body = User, content_type = "application/json"),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
     ),
-    tag="users"
+    tag="users",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[get("/self")]
-pub async fn get_self() -> impl Responder {
+pub async fn get_self(auth: AuthContext) -> impl Responder {
     todo!("Implement get_self method.");
     HttpResponse::Ok().json(User {
         id: Uuid::new_v4(),
@@ -51,10 +54,13 @@ pub async fn get_self() -> impl Responder {
         (status = StatusCode::OK, description = "Users retrieved successfully", body = UserList, content_type = "application/json"),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
     ),
-    tag="users"
+    tag="users",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[get("")]
-pub async fn get_users() -> impl Responder {
+pub async fn get_users(auth: AuthContext) -> impl Responder {
     todo!("Implement get_users method.");
     HttpResponse::Ok().json(UserList { users: vec![] })
 }
@@ -74,10 +80,13 @@ pub async fn get_users() -> impl Responder {
         description = "User to edit",
         content_type = "application/json",
         content = UserPost
+    ),
+    security(
+        ("Jwt Access Token" = [])
     )
 )]
 #[patch("/self")]
-pub async fn edit_self(patch: web::Json<UserPost>) -> impl Responder {
+pub async fn edit_self(auth: AuthContext, patch: web::Json<UserPost>) -> impl Responder {
     todo!("Implement edit_self method.");
     HttpResponse::Ok().json(User {
         id: Uuid::new_v4(),
@@ -97,10 +106,13 @@ pub async fn edit_self(patch: web::Json<UserPost>) -> impl Responder {
         (status = StautsCode::NO_CONTENT, description = "Successfully deleted"),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
     ),
-    tag="users"
+    tag="users",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[delete("/self")]
-pub async fn delete_user() -> impl Responder {
+pub async fn delete_user(auth: AuthContext) -> impl Responder {
     todo!("Implement delete_user method.");
     HttpResponse::NoContent().finish()
 }

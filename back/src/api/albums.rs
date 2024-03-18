@@ -4,6 +4,7 @@ use crate::api::{
     query_payload_error_example,
 };
 use crate::api::{json_payload_error_example, PaginationQuery};
+use crate::auth::AuthContext;
 use crate::error_handler::ApiError;
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
@@ -49,10 +50,13 @@ pub struct AlbumList {
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Album not found (or user is forbidden to see it)", body = ApiError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
-    tag="albums"
+    tag="albums",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[get("/{id}")]
-pub async fn get_album(album_uuid: web::Path<Uuid>) -> impl Responder {
+pub async fn get_album(auth: AuthContext, album_uuid: web::Path<Uuid>) -> impl Responder {
     todo!("Implement get_album method.");
     HttpResponse::Ok().json(Album {
         id: album_uuid.into_inner(),
@@ -78,10 +82,13 @@ pub async fn get_album(album_uuid: web::Path<Uuid>) -> impl Responder {
         (status = StatusCode::BAD_REQUEST, description = "Invalid query parameters", body = ApiError, example=json!(query_payload_error_example()), content_type = "application/json"),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json")
     ),
-    tag="albums"
+    tag="albums",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[get("")]
-pub async fn get_albums(query: web::Query<PaginationQuery>) -> impl Responder {
+pub async fn get_albums(auth: AuthContext, query: web::Query<PaginationQuery>) -> impl Responder {
     todo!("Implement get_albums method.");
     HttpResponse::Ok().json(AlbumList { albums: vec![] })
 }
@@ -101,10 +108,13 @@ pub async fn get_albums(query: web::Query<PaginationQuery>) -> impl Responder {
         description = "Album to create",
         content_type = "application/json",
         content = AlbumPost
+    ),
+    security(
+        ("Jwt Access Token" = [])
     )
 )]
 #[post("")]
-pub async fn create_album(album: web::Json<AlbumPost>) -> impl Responder {
+pub async fn create_album(auth: AuthContext, album: web::Json<AlbumPost>) -> impl Responder {
     todo!("Implement create_album method.");
     HttpResponse::Ok().json(Album {
         id: Uuid::new_v4(),
@@ -140,10 +150,17 @@ pub async fn create_album(album: web::Json<AlbumPost>) -> impl Responder {
         description = "Album to edit",
         content_type = "application/json",
         content = AlbumPost
+    ),
+    security(
+        ("Jwt Access Token" = [])
     )
 )]
 #[patch("/{id}")]
-pub async fn edit_album(album_id: web::Path<Uuid>, patch: web::Json<AlbumPost>) -> impl Responder {
+pub async fn edit_album(
+    auth: AuthContext,
+    album_id: web::Path<Uuid>,
+    patch: web::Json<AlbumPost>,
+) -> impl Responder {
     todo!("Implement edit_album method.");
     HttpResponse::Ok().json(Album {
         id: album_id.into_inner(),
@@ -170,10 +187,13 @@ pub async fn edit_album(album_id: web::Path<Uuid>, patch: web::Json<AlbumPost>) 
         (status = StatusCode::FORBIDDEN, description = "User has read only rights on the album (shared album)", body = ApiError, example = json!(ApiError::forbidden_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Album not found (or user is forbidden to see it)", body = ApiError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
-    tag="albums"
+    tag="albums",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[delete("/{id}")]
-pub async fn delete_album(album_id: web::Path<Uuid>) -> impl Responder {
+pub async fn delete_album(auth: AuthContext, album_id: web::Path<Uuid>) -> impl Responder {
     todo!("Implement delete_album method.");
     HttpResponse::NoContent().finish()
 }
@@ -194,10 +214,16 @@ pub async fn delete_album(album_id: web::Path<Uuid>) -> impl Responder {
         (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image/album (shared image/album)", body = ApiError, example = json!(ApiError::forbidden_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Album or image not found (or user is forbidden to see it)", body = ApiError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
-    tag="albums"
+    tag="albums",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[post("/{id}/images/{image_id}")]
-pub async fn add_image_to_album(path: web::Path<(Uuid, Uuid)>) -> impl Responder {
+pub async fn add_image_to_album(
+    auth: AuthContext,
+    path: web::Path<(Uuid, Uuid)>,
+) -> impl Responder {
     todo!("Implement add_image_to_album method.");
     HttpResponse::Ok().json(Album {
         id: path.0,
@@ -225,10 +251,16 @@ pub async fn add_image_to_album(path: web::Path<(Uuid, Uuid)>) -> impl Responder
         (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image/album (shared image/album)", body = ApiError, example = json!(ApiError::forbidden_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Album or image not found (or user is forbidden to see it)", body = ApiError, example = json!(album_not_found_example()), content_type = "application/json")
     ),
-    tag="albums"
+    tag="albums",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[delete("/{id}/images/{image_id}")]
-pub async fn remove_image_from_album(path: web::Path<(Uuid, Uuid)>) -> impl Responder {
+pub async fn remove_image_from_album(
+    auth: AuthContext,
+    path: web::Path<(Uuid, Uuid)>,
+) -> impl Responder {
     todo!("Implement remove_image_from_album method.");
     HttpResponse::Ok().json(Album {
         id: path.0,

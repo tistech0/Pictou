@@ -2,6 +2,7 @@ use crate::api::{
     image_not_found_example, json_payload_error_example, path_error_example,
     query_payload_error_example,
 };
+use crate::auth::AuthContext;
 use crate::error_handler::ApiError;
 use actix_multipart::Multipart;
 use actix_web::{delete, get, http, patch, post, web, Error, HttpResponse, Responder};
@@ -79,10 +80,17 @@ pub struct ImageUploadResponse {
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = ApiError, example = json!(image_not_found_example()), content_type = "application/json")
     ),
-    tag="images"
+    tag="images",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[get("/{id}")]
-pub async fn get_image(img_id: web::Path<Uuid>, query: web::Query<ImageQuery>) -> impl Responder {
+pub async fn get_image(
+    auth: AuthContext,
+    img_id: web::Path<Uuid>,
+    query: web::Query<ImageQuery>,
+) -> impl Responder {
     todo!("Implement get_image method.");
     HttpResponse::build(http::StatusCode::OK)
         .content_type("image/jpeg")
@@ -107,10 +115,16 @@ pub async fn get_image(img_id: web::Path<Uuid>, query: web::Query<ImageQuery>) -
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
         (status = StatusCode::BAD_REQUEST, description = "Invalid query parameters", body = ApiError, example=json!(query_payload_error_example()), content_type = "application/json"),
     ),
-    tag="images"
+    tag="images",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[get("")]
-pub async fn get_images(query: web::Query<ImagesQuery>) -> Result<impl Responder, Error> {
+pub async fn get_images(
+    auth: AuthContext,
+    query: web::Query<ImagesQuery>,
+) -> Result<impl Responder, Error> {
     todo!("Implement get_images method.");
     Ok(web::Json(ImagesMetaData { images: vec![] }))
 }
@@ -129,10 +143,13 @@ pub async fn get_images(query: web::Query<ImagesQuery>) -> Result<impl Responder
         description = "File to upload (binary data)",
         content_type = "multipart/form-data",
         content = Binary
+    ),
+    security(
+        ("Jwt Access Token" = [])
     )
 )]
 #[post("")]
-pub async fn upload_image(payload: Multipart) -> impl Responder {
+pub async fn upload_image(auth: AuthContext, payload: Multipart) -> impl Responder {
     todo!("Implement upload_image method.");
     HttpResponse::Ok().json(ImageUploadResponse {
         id: uuid::Uuid::new_v4(),
@@ -163,10 +180,17 @@ pub async fn upload_image(payload: Multipart) -> impl Responder {
         description = "Image to edit",
         content_type = "application/json",
         content = ImagePatch
+    ),
+    security(
+        ("Jwt Access Token" = [])
     )
 )]
 #[patch("/{id}")]
-pub async fn edit_image(img_id: web::Path<Uuid>, patch: web::Json<ImagePatch>) -> impl Responder {
+pub async fn edit_image(
+    auth: AuthContext,
+    img_id: web::Path<Uuid>,
+    patch: web::Json<ImagePatch>,
+) -> impl Responder {
     todo!("Implement edit_image method.");
     HttpResponse::Ok().json(ImageMetaData {
         id: img_id.into_inner(),
@@ -193,10 +217,13 @@ pub async fn edit_image(img_id: web::Path<Uuid>, patch: web::Json<ImagePatch>) -
         (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image (shared image)", body = ApiError, example = json!(ApiError::forbidden_error()), content_type = "application/json"),
         (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = ApiError, example = json!(image_not_found_example()), content_type = "application/json")
     ),
-    tag="images"
+    tag="images",
+    security(
+        ("Jwt Access Token" = [])
+    )
 )]
 #[delete("/{id}")]
-pub async fn delete_image(img_id: web::Path<Uuid>) -> impl Responder {
+pub async fn delete_image(auth: AuthContext, img_id: web::Path<Uuid>) -> impl Responder {
     todo!("Implement delete_image method.");
     HttpResponse::NoContent().finish()
 }
