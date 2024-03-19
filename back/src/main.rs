@@ -20,6 +20,7 @@ mod error_handler;
 mod log;
 mod openapi;
 mod schema;
+mod storage;
 
 use crate::{
     auth::{AuthContext, OAuth2Clients},
