@@ -213,7 +213,7 @@ struct AuthenticationToken {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{http::StatusCode, test::TestRequest, App, Responder};
+    use actix_web::{http::StatusCode, test::TestRequest, App, HttpResponse, Responder};
     use time::Duration;
     use tracing_test::traced_test;
 

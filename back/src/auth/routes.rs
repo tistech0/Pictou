@@ -21,6 +21,7 @@ use crate::{
     },
     config::AppConfiguration,
     database::{self, Database, DatabaseError},
+    error_handler::ApiError,
 };
 
 use super::OAuth2Clients;
@@ -31,7 +32,8 @@ pub fn configure(clients: web::Data<OAuth2Clients>, service_cfg: &mut ServiceCon
         .app_data(clients)
         .service(login)
         .service(callback)
-        .service(refresh_token);
+        .service(refresh_token)
+        .service(logout);
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -76,7 +78,11 @@ pub async fn login(
 /// This documentation is here to show the structure of the body received by this endpoint, not to call this endpoint.
 #[utoipa::path(
     responses(
-        (status = StatusCode::OK, body = AuthenticationResponse, description = "Google authentication succeeded and user can use the access token as a bearer."),
+        (
+            status = StatusCode::OK,
+            body = AuthenticationResponse,
+            description = "Google authentication succeeded and user can use the access token as a bearer."
+        ),
     ),
     params(AuthPathParameters),
     tag="auth"
@@ -120,8 +126,18 @@ pub async fn callback(
             ("Invalid payload" = (value = json!(json_payload_error_example())))),
             content_type = "application/json"
         ),
-        (status = StatusCode::UNAUTHORIZED, description = "Credentials are invalid", body = AuthError, content_type = "application/json"),
-        (status = StatusCode::FORBIDDEN, description = "OAuth provider rejected the request", body = AuthError, content_type = "application/json"),
+        (
+            status = StatusCode::UNAUTHORIZED,
+            description = "Credentials are invalid",
+            body = AuthError,
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::FORBIDDEN,
+            description = "OAuth provider rejected the request",
+            body = AuthError,
+            content_type = "application/json"
+        ),
     ),
     tag="auth",
     request_body(
@@ -204,4 +220,40 @@ pub async fn refresh_token(
         access_token,
         access_token_exp,
     }))
+}
+
+/// Revoke the refresh token of the user.
+/// The user may still be authenticated with the access token (for up to 3 minutes, by default),
+/// but the refresh token is invalidated.
+#[utoipa::path(
+    responses(
+        (status = StatusCode::OK, description = "Successfully logged out"),
+        (
+            status = StatusCode::UNAUTHORIZED,
+            description = "User not authenticated",
+            body = ApiError,
+            example = json!(ApiError::unauthorized_error()), content_type = "application/json"
+        ),
+    ),
+    params(AuthPathParameters),
+    tag="auth"
+)]
+#[get("/auth/logout")]
+#[tracing::instrument(skip_all)]
+pub async fn logout(db: web::Data<Database>, auth: AuthContext) -> ActixResult<HttpResponse> {
+    database::open(db, move |conn| {
+        use crate::schema::users;
+        use diesel::prelude::*;
+
+        diesel::update(users::table.filter(users::id.eq(auth.user_id)))
+            .set((
+                users::refresh_token.eq(""),
+                users::refresh_token_exp.eq(OffsetDateTime::now_utc()),
+            ))
+            .execute(conn)
+            .map_err(DatabaseError::from)
+    })
+    .await?;
+
+    Ok(HttpResponse::Ok().finish())
 }
