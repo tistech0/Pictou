@@ -1435,6 +1435,7 @@ dependencies = [
  "jsonwebtoken",
  "mime",
  "oauth2",
+ "pin-project",
  "r2d2",
  "rand",
  "reqwest",

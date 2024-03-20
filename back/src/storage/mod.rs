@@ -25,6 +25,8 @@ pub trait ImageStorage {
     ) -> io::Result<Pin<Box<dyn AsyncRead>>>;
 
     /// Opens the original image with the given hash and kind for writing.
+    ///
+    /// This function is *not* responsible for compressing and/or converting the image.
     async fn store(
         &self,
         hash: ImageHash,
