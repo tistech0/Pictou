@@ -40,6 +40,8 @@ diesel::table! {
         size -> Int4,
         width -> Int4,
         height -> Int4,
+        #[max_length = 255]
+        orignal_mime_type -> Varchar,
     }
 }
 
