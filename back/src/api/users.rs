@@ -99,9 +99,6 @@ pub async fn edit_self(auth: AuthContext, patch: web::Json<UserPost>) -> impl Re
 #[allow(unused_variables)]
 #[utoipa::path(
     context_path = CONTEXT_PATH,
-    params(
-        ("id" = Uuid, Path, description="User to delete", example="e58ed763-928c-4155-bee9-fdbaaadc15f3"),
-    ),
     responses(
         (status = StautsCode::NO_CONTENT, description = "Successfully deleted"),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
