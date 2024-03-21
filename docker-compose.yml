@@ -5,9 +5,11 @@ services:
     image: postgres
     restart: always
     volumes:
-    - ./database:/var/lib/postgresql
+    - ./database:/var/lib/postgresql/data
     env_file:
       - ./back/.env
+    environment:
+      PGDATA: /var/lib/postgresql/data
     ports:
         - "5432:5432"
 
