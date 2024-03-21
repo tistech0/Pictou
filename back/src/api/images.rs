@@ -1,12 +1,23 @@
-use crate::api::{
-    image_not_found_example, json_payload_error_example, path_error_example,
-    query_payload_error_example,
+use std::error::Error as StdError;
+
+use crate::{
+    api::{
+        image_not_found_example, json_payload_error_example, path_error_example,
+        query_payload_error_example,
+    },
+    auth::AuthContext,
+    database::{self, Database, DatabaseError},
+    error_handler::ApiError,
+    storage::{ImageHash, ImageStorage, StoredImageKind},
 };
-use crate::auth::AuthContext;
-use crate::error_handler::ApiError;
 use actix_multipart::Multipart;
-use actix_web::{delete, get, http, patch, post, web, Error, HttpResponse, Responder};
+use actix_web::{
+    delete, error::ErrorInternalServerError, get, patch, post, web, Error as ActixError,
+    HttpResponse, Responder, Result as ActixResult,
+};
 use serde::{Deserialize, Serialize};
+use tokio_util::io::ReaderStream;
+use tracing::{error, trace};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -62,13 +73,11 @@ pub struct ImageUploadResponse {
 }
 
 /// Get an image by its id.
-#[allow(unused_variables)]
-#[allow(unreachable_code)]
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
-        ("id" = Uuid, Path, description="Identifier of the image", example="e58ed763-928c-4155-bee9-fdbaaadc15f3"),
-        ("quality" = Option<ImageQuality>, Query, description="Image quality", example="Low")
+        ("id" = Uuid, Path, description =" Identifier of the image", example = "e58ed763-928c-4155-bee9-fdbaaadc15f3"),
+        ("quality" = Option<ImageQuality>, Query, description = "Image quality", example = "Low")
     ),
     responses(
         (status = StatusCode::OK, description = "Image retrieved successfully", body = Binary, content_type = "image/jpeg"),
@@ -86,15 +95,49 @@ pub struct ImageUploadResponse {
     )
 )]
 #[get("/{id}")]
+#[tracing::instrument(skip_all)]
 pub async fn get_image(
     auth: AuthContext,
     img_id: web::Path<Uuid>,
     query: web::Query<ImageQuery>,
-) -> impl Responder {
-    todo!("Implement get_image method.");
-    HttpResponse::build(http::StatusCode::OK)
-        .content_type("image/jpeg")
-        .body(Vec::new())
+    db: web::Data<Database>,
+    image_storage: web::Data<dyn ImageStorage>,
+) -> ActixResult<HttpResponse> {
+    let user_id = auth.user_id;
+    let img_id = img_id.into_inner();
+
+    let _ = query; // FIXME: image quality is ignored for now
+
+    let (hash, mime_type) = database::open(db, move |conn| {
+        use crate::schema::{stored_images, user_images};
+        use diesel::prelude::*;
+
+        user_images::table
+            .inner_join(stored_images::table)
+            .filter(
+                user_images::id
+                    .eq(img_id)
+                    .and(user_images::user_id.eq(user_id)),
+            )
+            .select((stored_images::hash, stored_images::orignal_mime_type))
+            .get_result::<(ImageHash, String)>(conn)
+            .map_err(DatabaseError::from)
+    })
+    .await?;
+
+    trace!(%hash, mime_type, "opening image for reading");
+    let image_source = image_storage
+        .load(hash, StoredImageKind::Original)
+        .await
+        .map_err(|error| {
+            error!(%hash, error = &error as &dyn StdError, "failed to load image from storage");
+            ErrorInternalServerError("")
+        })?;
+    let image_stream = ReaderStream::new(image_source);
+
+    Ok(HttpResponse::Ok()
+        .content_type(mime_type)
+        .streaming(image_stream))
 }
 
 /// Get the images owned by or shared with the user
@@ -124,7 +167,7 @@ pub async fn get_image(
 pub async fn get_images(
     auth: AuthContext,
     query: web::Query<ImagesQuery>,
-) -> Result<impl Responder, Error> {
+) -> Result<impl Responder, ActixError> {
     todo!("Implement get_images method.");
     Ok(web::Json(ImagesMetaData { images: vec![] }))
 }
@@ -151,9 +194,7 @@ pub async fn get_images(
 #[post("")]
 pub async fn upload_image(auth: AuthContext, payload: Multipart) -> impl Responder {
     todo!("Implement upload_image method.");
-    HttpResponse::Ok().json(ImageUploadResponse {
-        id: uuid::Uuid::new_v4(),
-    })
+    HttpResponse::Ok().json(ImageUploadResponse { id: Uuid::new_v4() })
 }
 
 /// Set/modfiy image metadata, share/unshare, ...
