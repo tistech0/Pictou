@@ -21,6 +21,8 @@ use tracing::{error, trace};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use super::Binary;
+
 const CONTEXT_PATH: &str = "/images";
 
 #[derive(Clone, Deserialize, Serialize, ToSchema)]
@@ -50,6 +52,12 @@ pub struct ImagePatch {
     name: Option<String>,
     tags: Option<Vec<String>>,
     shared_with: Option<Vec<String>>,
+}
+
+#[derive(ToSchema)]
+pub struct ImagePayload {
+    #[allow(dead_code)]
+    image: Binary,
 }
 
 #[derive(Deserialize, Serialize, ToSchema)]
@@ -181,11 +189,11 @@ pub async fn get_images(
         (status = StatusCode::OK, description = "Successfully uploaded", body = ImageUploadResponse),
         (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json")
     ),
-    tag="images",
+    tag = "images",
     request_body(
         description = "File to upload (binary data)",
         content_type = "multipart/form-data",
-        content = Binary
+        content = ImagePayload
     ),
     security(
         ("JWT Access Token" = [])

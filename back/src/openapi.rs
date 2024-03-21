@@ -1,19 +1,28 @@
-use utoipa::openapi::security::{
-    ClientCredentials, Flow, HttpAuthScheme, HttpBuilder, OAuth2, Scopes, SecurityScheme,
+use utoipa::{
+    openapi::security::{
+        ClientCredentials, Flow, HttpAuthScheme, HttpBuilder, OAuth2, Scopes, SecurityScheme,
+    },
+    Modify, OpenApi,
 };
-use utoipa::{Modify, OpenApi};
 use utoipa_auto_discovery::utoipa_auto_discovery;
 
-use crate::api::albums::{Album, AlbumList, AlbumPost};
-use crate::api::images::{
-    ImageMetaData, ImagePatch, ImageQuality, ImageUploadResponse, ImagesMetaData,
+use crate::{
+    api::{
+        albums::{Album, AlbumList, AlbumPost},
+        images::{
+            ImageMetaData, ImagePatch, ImagePayload, ImageQuality, ImageUploadResponse,
+            ImagesMetaData,
+        },
+        users::{User, UserList, UserPost},
+        Binary, OpenapiUuid,
+    },
+    auth::{
+        error::{AuthError, AuthErrorKind},
+        AuthenticationResponse, PersistedUserInfo, RefreshTokenParams,
+    },
+    config::AppConfiguration,
+    error_handler::{ApiError, ApiErrorCode},
 };
-use crate::api::users::{User, UserList, UserPost};
-use crate::api::{Binary, OpenapiUuid};
-use crate::auth::error::{AuthError, AuthErrorKind};
-use crate::auth::{AuthenticationResponse, PersistedUserInfo, RefreshTokenParams};
-use crate::config::AppConfiguration;
-use crate::error_handler::{ApiError, ApiErrorCode};
 
 struct SecuritySchemas;
 
@@ -66,7 +75,7 @@ impl Modify for SecuritySchemas {
         (url = "/api")
     ),
     components(
-        schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImageMetaData, ImagesMetaData,
+        schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImagePayload, ImageMetaData, ImagesMetaData,
             Album, AlbumList, AlbumPost,
             User, UserList, UserPost,
             ApiErrorCode, ApiError, OpenapiUuid,

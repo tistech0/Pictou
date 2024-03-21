@@ -37,7 +37,7 @@ pub fn configure(clients: web::Data<OAuth2Clients>, service_cfg: &mut ServiceCon
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
-#[into_params(style = Form, parameter_in = Path)]
+#[into_params(style = Simple, parameter_in = Path)]
 struct AuthPathParameters {
     #[param(inline)]
     provider: ClientType,
@@ -235,7 +235,6 @@ pub async fn refresh_token(
             example = json!(ApiError::unauthorized_error()), content_type = "application/json"
         ),
     ),
-    params(AuthPathParameters),
     tag="auth"
 )]
 #[get("/auth/logout")]
