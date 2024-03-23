@@ -20,7 +20,7 @@ use crate::{
         AuthContext, AuthenticationResponse, PersistedUserInfo, RefreshTokenParams,
     },
     config::AppConfiguration,
-    database::{self, Database, DatabaseError},
+    database::{self, Database, SimpleDatabaseError},
     error_handler::ApiError,
 };
 
@@ -180,7 +180,7 @@ pub async fn refresh_token(
                 .select((users::email, users::auth_type, users::oauth_token))
                 .get_result(conn)
                 .optional()
-                .map_err(DatabaseError::from)
+                .map_err(SimpleDatabaseError::from)
         })
         .await?;
 
@@ -211,7 +211,7 @@ pub async fn refresh_token(
             ))
             .returning(PersistedUserInfo::as_returning())
             .get_result(conn)
-            .map_err(DatabaseError::from)
+            .map_err(SimpleDatabaseError::from)
     })
     .await?;
 
@@ -250,7 +250,7 @@ pub async fn logout(db: web::Data<Database>, auth: AuthContext) -> ActixResult<H
                 users::refresh_token_exp.eq(OffsetDateTime::now_utc()),
             ))
             .execute(conn)
-            .map_err(DatabaseError::from)
+            .map_err(SimpleDatabaseError::from)
     })
     .await?;
 

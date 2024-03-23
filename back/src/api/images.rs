@@ -6,7 +6,7 @@ use crate::{
         query_payload_error_example,
     },
     auth::AuthContext,
-    database::{self, Database, DatabaseError},
+    database::{self, Database, SimpleDatabaseError},
     error_handler::ApiError,
     storage::{ImageHash, ImageStorage, StoredImageKind},
 };
@@ -129,7 +129,7 @@ pub async fn get_image(
             )
             .select((stored_images::hash, stored_images::orignal_mime_type))
             .get_result::<(ImageHash, String)>(conn)
-            .map_err(DatabaseError::from)
+            .map_err(SimpleDatabaseError::from)
     })
     .await?;
 
