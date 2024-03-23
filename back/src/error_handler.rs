@@ -1,9 +1,11 @@
-use std::fmt::Display;
+use std::error::Error;
+use std::fmt::{self, Display};
+use std::io;
 
 use actix_web::http::StatusCode;
 use actix_web::{
     body::MessageBody, dev::ServiceResponse, http::header, middleware::ErrorHandlerResponse,
-    HttpResponse, HttpResponseBuilder, Result,
+    HttpResponse, HttpResponseBuilder, Result as ActixResult,
 };
 use actix_web::{HttpRequest, ResponseError};
 use futures::executor::block_on;
@@ -13,7 +15,7 @@ use utoipa::ToSchema;
 
 use crate::auth::error::AuthError;
 
-#[derive(Clone, Deserialize, Serialize, Debug, ToSchema)]
+#[derive(Clone, Copy, Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiErrorCode {
     Unknown,
@@ -33,17 +35,23 @@ pub struct ApiError {
 }
 
 impl Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.description)
     }
 }
 
+impl Error for ApiError {}
+
 impl ApiError {
-    pub fn new(http_status: StatusCode, error_code: ApiErrorCode, description: &str) -> Self {
+    pub fn new(
+        http_status: StatusCode,
+        error_code: ApiErrorCode,
+        description: impl ToString,
+    ) -> Self {
         ApiError {
             http_status: http_status.as_u16(),
             error_code,
-            description: description.into(),
+            description: description.to_string(),
         }
     }
 
@@ -116,7 +124,7 @@ fn make_error_response<B: MessageBody>(
     description: String,
     error_code: ApiErrorCode,
     http_status: StatusCode,
-) -> Result<ErrorHandlerResponse<B>> {
+) -> ActixResult<ErrorHandlerResponse<B>> {
     let api_error = ApiError {
         http_status: http_status.as_u16(),
         error_code,
@@ -129,7 +137,7 @@ fn make_error_response<B: MessageBody>(
 
 pub fn json_error_handler<B: MessageBody>(
     res: ServiceResponse<B>,
-) -> Result<ErrorHandlerResponse<B>> {
+) -> ActixResult<ErrorHandlerResponse<B>> {
     let request = res.request().clone();
 
     // Handle error response
@@ -173,6 +181,18 @@ pub fn json_error_handler<B: MessageBody>(
                 ApiErrorCode::JsonPayloadError,
                 StatusCode::BAD_REQUEST,
             );
+        }
+
+        // Known errors wrapped in io::Error
+        if let Some(err) = error.as_error::<io::Error>() {
+            if let Some(err) = err.get_ref().and_then(|e| e.downcast_ref::<ApiError>()) {
+                return make_error_response(
+                    request,
+                    err.to_string(),
+                    err.error_code,
+                    err.status_code(),
+                );
+            }
         }
     }
 
