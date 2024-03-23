@@ -17,6 +17,7 @@ mod auth;
 mod config;
 mod database;
 mod error_handler;
+mod image;
 mod log;
 mod openapi;
 mod schema;

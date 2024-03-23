@@ -24,6 +24,7 @@ pub struct AppConfiguration {
     pub google_client_secret: Option<oauth2::ClientSecret>,
     pub refresh_token_lifetime: Duration,
     pub access_token_lifetime: Duration,
+    pub max_image_size: usize,
 }
 
 impl AppConfiguration {
@@ -62,6 +63,7 @@ impl AppConfiguration {
                 .map(oauth2::ClientSecret::new),
             refresh_token_lifetime: Duration::seconds(env::var("REFRESH_TOKEN_LIFETIME")?.parse()?),
             access_token_lifetime: Duration::seconds(env::var("ACCESS_TOKEN_LIFETIME")?.parse()?),
+            max_image_size: env::var("MAX_IMAGE_SIZE").map_or(Ok(10_000_000), |s| s.parse())?,
         })
     }
 }
@@ -83,6 +85,7 @@ impl Default for AppConfiguration {
             google_client_secret: Default::default(),
             refresh_token_lifetime: Duration::days(30),
             access_token_lifetime: Duration::minutes(3),
+            max_image_size: 10_000_000,
         }
     }
 }
@@ -104,6 +107,7 @@ impl Debug for AppConfiguration {
             .field("google_client_secret", &"<redacted>")
             .field("refresh_token_lifetime", &self.refresh_token_lifetime)
             .field("access_token_lifetime", &self.access_token_lifetime)
+            .field("max_image_size", &self.max_image_size)
             .finish()
     }
 }

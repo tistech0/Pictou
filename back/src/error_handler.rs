@@ -14,6 +14,7 @@ use std::str::from_utf8;
 use utoipa::ToSchema;
 
 use crate::auth::error::AuthError;
+use crate::image::ImageType;
 
 #[derive(Clone, Copy, Deserialize, Serialize, Debug, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -25,6 +26,10 @@ pub enum ApiErrorCode {
     NotFoundError,
     UnauthorizedError,
     ForbiddenError,
+    MissingImagePayload,
+    ImagePayloadTooLarge,
+    UnsupportedImageType,
+    InvalidEncoding,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -87,6 +92,14 @@ impl ApiError {
         }
     }
 
+    pub fn missing_image_payload() -> Self {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            ApiErrorCode::MissingImagePayload,
+            "No image field found in the payload",
+        )
+    }
+
     pub fn unauthorized_error() -> Self {
         ApiError {
             http_status: StatusCode::UNAUTHORIZED.as_u16(),
@@ -103,6 +116,42 @@ impl ApiError {
             description: "Trying to access private resource with valid credentials but insufficient access rights"
                 .to_string(),
         }
+    }
+
+    pub fn image_too_big(max_size: usize) -> Self {
+        let (max_size, unit) = if max_size >= 1_000_000 {
+            (max_size / 1_000_000, "MB")
+        } else if max_size >= 1_000 {
+            (max_size / 1_000, "KB")
+        } else {
+            (max_size, "B")
+        };
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            ApiErrorCode::ImagePayloadTooLarge,
+            format!("Image payoad too large: max {max_size}{unit}"),
+        )
+    }
+
+    pub fn unsupported_image_type() -> Self {
+        let all_types = ImageType::ALL
+            .iter()
+            .map(|t| t.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            ApiErrorCode::UnsupportedImageType,
+            format!("Unsupported image type: supported types are {all_types}"),
+        )
+    }
+
+    pub fn invalid_encoding(description: impl ToString) -> Self {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            ApiErrorCode::InvalidEncoding,
+            description,
+        )
     }
 }
 
