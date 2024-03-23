@@ -1,23 +1,33 @@
-use std::error::Error as StdError;
+use std::{
+    error::Error as StdError,
+    future,
+    io::{self, Cursor},
+    pin::Pin,
+};
 
 use crate::{
     api::{
-        image_not_found_example, json_payload_error_example, path_error_example,
-        query_payload_error_example,
+        image_not_found_example, image_payload_too_large_example, json_payload_error_example,
+        path_error_example, query_payload_error_example,
     },
     auth::AuthContext,
-    database::{self, Database, SimpleDatabaseError},
-    error_handler::ApiError,
+    config::AppConfiguration,
+    database::{self, Database, DatabaseError, SimpleDatabaseError},
+    error_handler::{ApiError, ApiErrorCode},
+    image::{self, ImageType},
     storage::{ImageHash, ImageStorage, StoredImageKind},
 };
 use actix_multipart::Multipart;
 use actix_web::{
-    delete, error::ErrorInternalServerError, get, patch, post, web, Error as ActixError,
-    HttpResponse, Responder, Result as ActixResult,
+    delete, error::ErrorInternalServerError, get, http::header, patch, post, web,
+    Error as ActixError, HttpResponse, Responder, Result as ActixResult,
 };
+use diesel::{deserialize::Queryable, prelude::Insertable, Selectable};
+use futures::prelude::stream::*;
 use serde::{Deserialize, Serialize};
-use tokio_util::io::ReaderStream;
-use tracing::{error, trace};
+use tokio::io::AsyncWriteExt;
+use tokio_util::io::{ReaderStream, StreamReader};
+use tracing::{debug, error, info, trace};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -80,22 +90,71 @@ pub struct ImageUploadResponse {
     id: Uuid,
 }
 
+#[derive(Debug, Insertable, Selectable, Queryable, ToSchema)]
+#[diesel(table_name = crate::schema::stored_images)]
+struct NewStoredImage {
+    hash: ImageHash,
+    compression_alg: String,
+    size: i64,
+    width: i64,
+    height: i64,
+    orignal_mime_type: String,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = crate::schema::user_images)]
+struct NewUserImage {
+    user_id: Uuid,
+    image_id: ImageHash,
+}
+
 /// Get an image by its id.
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
-        ("id" = Uuid, Path, description =" Identifier of the image", example = "e58ed763-928c-4155-bee9-fdbaaadc15f3"),
-        ("quality" = Option<ImageQuality>, Query, description = "Image quality", example = "Low")
+        (
+            "id" = Uuid,
+            Path,
+            description = "Identifier of the image",
+            example = "e58ed763-928c-4155-bee9-fdbaaadc15f3"
+        ),
+        (
+            "quality" = Option<ImageQuality>,
+            Query,
+            description = "Image quality",
+            example = "Low"
+        )
     ),
     responses(
-        (status = StatusCode::OK, description = "Image retrieved successfully", body = Binary, content_type = "image/jpeg"),
-        (status = StatusCode::BAD_REQUEST, body = ApiError, examples(
-            ("Invalid query parameters" = (value = json!(query_payload_error_example()))),
-            ("Invalid path parameters" = (value = json!(path_error_example())))),
+        (
+            status = StatusCode::OK,
+            description = "Image retrieved successfully",
+            body = Binary,
+            content_type = "image/jpeg"
+        ),
+        (
+            status = StatusCode::BAD_REQUEST,
+            body = ApiError,
+            examples(
+                ("Invalid query parameters" = (value = json!(query_payload_error_example()))),
+                ("Invalid path parameters" = (value = json!(path_error_example())))
+            ),
             content_type = "application/json"
         ),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
-        (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = ApiError, example = json!(image_not_found_example()), content_type = "application/json")
+        (
+            status = StatusCode::UNAUTHORIZED,
+            description = "User not authenticated",
+            body = ApiError,
+            example = json!(ApiError::unauthorized_error()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::NOT_FOUND,
+            description = "Image not found (or user is forbidden to see it)",
+            body = ApiError,
+            example = json!(image_not_found_example()),
+            content_type = "application/json"
+        )
     ),
     tag="images",
     security(
@@ -157,14 +216,46 @@ pub async fn get_image(
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
-        ("limit" = Option<u32>, Query, description="Number of images to return", example=10),
-        ("offset" = Option<u32>, Query, description="Offset of the query in the image list to return", example=0),
-        ("quality" = Option<ImageQuality>, Query, description="Image quality", example="low")
+        (
+            "limit" = Option<u32>,
+            Query,
+            description = "Number of images to return",
+            example = 10
+        ),
+        (
+            "offset" = Option<u32>,
+            Query,
+            description = "Offset of the query in the image list to return",
+            example = 0
+        ),
+        (
+            "quality" = Option<ImageQuality>,
+            Query,
+            description = "Image quality",
+            example = "low"
+        )
     ),
     responses(
-        (status = StatusCode::OK, description = "Images retrieved successfully", body = ImagesMetaData, content_type = "application/json"),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
-        (status = StatusCode::BAD_REQUEST, description = "Invalid query parameters", body = ApiError, example=json!(query_payload_error_example()), content_type = "application/json"),
+        (
+            status = StatusCode::OK,
+            description = "Images retrieved successfully",
+            body = ImagesMetaData,
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::UNAUTHORIZED,
+            description = "User not authenticated",
+            body = ApiError,
+            example = json!(ApiError::unauthorized_error()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::BAD_REQUEST,
+            description = "Invalid query parameters",
+            body = ApiError,
+            example = json!(query_payload_error_example()),
+            content_type = "application/json"
+        ),
     ),
     tag="images",
     security(
@@ -181,13 +272,35 @@ pub async fn get_images(
 }
 
 /// Upload an image
-#[allow(unreachable_code)]
-#[allow(unused_variables)]
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     responses(
-        (status = StatusCode::OK, description = "Successfully uploaded", body = ImageUploadResponse),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json")
+        (
+            status = StatusCode::OK,
+            description = "Successfully uploaded",
+            body = ImageUploadResponse
+        ),
+        (
+            status = StatusCode::UNAUTHORIZED,
+            description = "User not authenticated",
+            body = ApiError,
+            example = json!(ApiError::unauthorized_error()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::BAD_REQUEST,
+            description = "Invalid image payload / encoding",
+            body = ApiError,
+            example = json!(image_payload_too_large_example()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            description = "Unsupported image format",
+            body = ApiError,
+            example = json!(ApiError::unsupported_image_type()),
+            content_type = "application/json"
+        ),
     ),
     tag = "images",
     request_body(
@@ -200,9 +313,154 @@ pub async fn get_images(
     )
 )]
 #[post("")]
-pub async fn upload_image(auth: AuthContext, payload: Multipart) -> impl Responder {
-    todo!("Implement upload_image method.");
-    HttpResponse::Ok().json(ImageUploadResponse { id: Uuid::new_v4() })
+#[tracing::instrument(skip(size, payload, app_cfg, db, storage))]
+pub async fn upload_image(
+    auth: AuthContext,
+    size: web::Header<header::ContentLength>,
+    payload: Multipart,
+    app_cfg: web::Data<AppConfiguration>,
+    db: web::Data<Database>,
+    storage: web::Data<dyn ImageStorage>,
+) -> ActixResult<HttpResponse> {
+    let size = size.into_inner().into_inner();
+
+    if size > app_cfg.max_image_size {
+        return Err(ApiError::image_too_big(app_cfg.max_image_size))?;
+    }
+
+    info!("decoding uploaded image");
+
+    // TODO: add decoding timeout
+
+    let mut payload = payload.try_skip_while(|field| future::ready(Ok(field.name() != "image")));
+    let image_payload = payload
+        .try_next()
+        .await?
+        .ok_or_else(ApiError::missing_image_payload)?;
+
+    let image_type = image_payload
+        .content_type()
+        .and_then(|content_type| ImageType::from_mime(content_type.essence_str()))
+        .ok_or_else(ApiError::unsupported_image_type)?;
+
+    // wrap multipart errors as IO errors to pass them to the StreamReader
+    let image_payload = image_payload.map_err(|error| {
+        error!(
+            error = &error as &dyn StdError,
+            "failed to read image payload"
+        );
+        io::Error::other(ApiError::invalid_encoding(error))
+    });
+
+    let mut input = StreamReader::new(image_payload);
+
+    let decoded = image::decode_image(image_type, Pin::new(&mut input))
+        .await
+        .map_err(|error| {
+            error!(error = &error as &dyn StdError, "failed to decode image");
+            ApiError::invalid_encoding(error)
+        })?;
+    drop(input);
+
+    // consume the rest of the payload stream, not doing so would result in an error
+    while let Some(_extra_field) = payload.next().await.transpose()? {}
+
+    // exceeding 2**63 for size, width, or height *should* be impossible, but just in case...
+    let image_size: i64 = decoded.size.try_into().expect("image size overflowed i64");
+    let image_width: i64 = decoded
+        .width
+        .try_into()
+        .expect("image width overflowed i64");
+    let image_height: i64 = decoded
+        .height
+        .try_into()
+        .expect("image height overflowed i64");
+
+    let (user_image_id, need_storage): (Uuid, bool) = database::open(db, move |conn| {
+        use crate::schema::{stored_images, user_images};
+        use diesel::prelude::*;
+
+        let to_store = NewStoredImage {
+            hash: decoded.hash,
+            compression_alg: "none".to_owned(),
+            size: image_size,
+            width: image_width,
+            height: image_height,
+            orignal_mime_type: image_type.as_mime().to_owned(),
+        };
+
+        info!(?to_store, "decoding complete, storing image in database");
+
+        // insert stored image if not already present
+        let stored: Option<NewStoredImage> = diesel::insert_into(stored_images::table)
+            .values(&to_store)
+            .on_conflict_do_nothing()
+            .returning(NewStoredImage::as_returning())
+            .get_result(conn)
+            .optional()
+            .map_err(DatabaseError::<ApiError>::from)?;
+
+        let need_storage = match stored {
+            None => {
+                debug!(hash = %decoded.hash, "image already present, no storage needed");
+                false
+            }
+            Some(stored) => {
+                debug!(?stored, "updated stored_image record in database");
+
+                // check for hash collision
+                if to_store.size != stored.size
+                    || to_store.width != stored.width
+                    || to_store.height != stored.height
+                    || to_store.orignal_mime_type != stored.orignal_mime_type
+                {
+                    error!(hash = %decoded.hash, "hash collision detected");
+                    return Err(DatabaseError::Custom(ApiError::new(
+                        actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        ApiErrorCode::Unknown,
+                        "",
+                    )));
+                }
+                debug!("no hash collision detected");
+                true
+            }
+        };
+
+        debug!("inserting user_image record");
+
+        // insert user image, do nothing if already present
+        let user_image_id = diesel::insert_into(user_images::table)
+            .values(NewUserImage {
+                user_id: auth.user_id,
+                image_id: decoded.hash,
+            })
+            .on_conflict((user_images::user_id, user_images::image_id))
+            .do_update()
+            // INSERT .. ON CONFLICT .. DO NOTHING does not return the orignal row in Postgres,
+            // so we do a useless SET operation to get the row back
+            .set(user_images::user_id.eq(user_images::user_id))
+            .returning(user_images::id)
+            .get_result(conn)
+            .map_err(DatabaseError::<ApiError>::from)?;
+        Ok((user_image_id, need_storage))
+    })
+    .await?;
+
+    if need_storage {
+        info!(hash = %decoded.hash, %user_image_id, "compressing and storing image in storage");
+
+        // TODO: it would be wise to do these operations in a separate thread in order to not block
+        // the client
+        let mut output = storage
+            .store(decoded.hash, StoredImageKind::Original)
+            .await?;
+        let mut to_write_buf = Cursor::new(&decoded.bytes);
+        output.write_all_buf(&mut to_write_buf).await?;
+    }
+
+    info!(hash = %decoded.hash, %user_image_id, "image upload complete");
+
+    Ok(HttpResponse::Ok().json(ImageUploadResponse { id: user_image_id }))
 }
 
 /// Set/modfiy image metadata, share/unshare, ...
@@ -211,20 +469,51 @@ pub async fn upload_image(auth: AuthContext, payload: Multipart) -> impl Respond
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
-        ("id" = Uuid, Path, description="Image to edit", example="e58ed763-928c-4155-bee9-fdbaaadc15f3"),
+        (
+            "id" = Uuid,
+            Path,
+            description = "Image to edit",
+            example = "e58ed763-928c-4155-bee9-fdbaaadc15f3"
+        ),
     ),
     responses(
-        (status = StatusCode::OK, description = "Successfully patched", body = ImageMetaData),
-        (status = StatusCode::BAD_REQUEST, body = ApiError, examples(
-            ("Invalid path parameters" = (value = json!(path_error_example()))),
-            ("Invalid payload" = (value = json!(json_payload_error_example())))),
+        (
+            status = StatusCode::OK,
+            description = "Successfully patched",
+            body = ImageMetaData
+        ),
+        (
+            status = StatusCode::BAD_REQUEST,
+            body = ApiError,
+            examples(
+                ("Invalid path parameters" = (value = json!(path_error_example()))),
+                ("Invalid payload" = (value = json!(json_payload_error_example())))
+            ),
             content_type = "application/json"
         ),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
-        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image (shared image)", body = ApiError, example = json!(ApiError::forbidden_error()), content_type = "application/json"),
-        (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = ApiError, example = json!(image_not_found_example()), content_type = "application/json")
+        (
+            status = StatusCode::UNAUTHORIZED,
+            description = "User not authenticated",
+            body = ApiError,
+            example = json!(ApiError::unauthorized_error()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::FORBIDDEN,
+            description = "User has read only rights on the image (shared image)",
+            body = ApiError,
+            example = json!(ApiError::forbidden_error()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::NOT_FOUND,
+            description = "Image not found (or user is forbidden to see it)",
+            body = ApiError,
+            example = json!(image_not_found_example()),
+            content_type = "application/json"
+        )
     ),
-    tag="images",
+    tag = "images",
     request_body(
         description = "Image to edit",
         content_type = "application/json",
