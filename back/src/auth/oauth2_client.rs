@@ -26,7 +26,7 @@ use crate::{
         PersistedUserInfo,
     },
     config::AppConfiguration,
-    database::{self, Database, DatabaseError},
+    database::{self, Database, SimpleDatabaseError},
 };
 
 use super::error::AuthError;
@@ -207,7 +207,7 @@ where
             .set(&to_persist)
             .returning(PersistedUserInfo::as_returning())
             .get_result(conn)
-            .map_err(DatabaseError::from)
+            .map_err(SimpleDatabaseError::from)
     })
     .await
     .map_err(ActixError::from)?;
