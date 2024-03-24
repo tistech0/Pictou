@@ -531,29 +531,98 @@ pub async fn edit_image(
 }
 
 /// Delete an image
-#[allow(unreachable_code)]
-#[allow(unused_variables)]
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
-        ("id" = Uuid, Path, description="Image to delete", example="e58ed763-928c-4155-bee9-fdbaaadc15f3"),
+        (
+            "id" = Uuid,
+            Path,
+            description="Image to delete",
+            example="e58ed763-928c-4155-bee9-fdbaaadc15f3"
+        ),
     ),
     responses(
-        (status = StatusCode::NO_CONTENT, description = "Successfully deleted"),
-        (status = StatusCode::BAD_REQUEST, description = "Invalid path parameters", body = ApiError, example=json!(path_error_example()), content_type = "application/json"),
-        (status = StatusCode::UNAUTHORIZED, description = "User not authenticated", body = ApiError, example = json!(ApiError::unauthorized_error()), content_type = "application/json"),
-        (status = StatusCode::FORBIDDEN, description = "User has read only rights on the image (shared image)", body = ApiError, example = json!(ApiError::forbidden_error()), content_type = "application/json"),
-        (status = StatusCode::NOT_FOUND, description = "Image not found (or user is forbidden to see it)", body = ApiError, example = json!(image_not_found_example()), content_type = "application/json")
+        (
+            status = StatusCode::NO_CONTENT,
+            description = "Successfully deleted"
+        ),
+        (
+            status = StatusCode::BAD_REQUEST,
+            description = "Invalid path parameters",
+            body = ApiError,
+            example = json!(path_error_example()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::UNAUTHORIZED,
+            description = "User not authenticated",
+            body = ApiError,
+            example = json!(ApiError::unauthorized_error()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::FORBIDDEN,
+            description = "User has read only rights on the image (shared image)",
+            body = ApiError,
+            example = json!(ApiError::forbidden_error()),
+            content_type = "application/json"
+        ),
+        (
+            status = StatusCode::NOT_FOUND,
+            description = "Image not found (or user is forbidden to see it)",
+            body = ApiError,
+            example = json!(image_not_found_example()),
+            content_type = "application/json"
+        )
     ),
-    tag="images",
+    tag = "images",
     security(
         ("JWT Access Token" = [])
     )
 )]
 #[delete("/{id}")]
-pub async fn delete_image(auth: AuthContext, img_id: web::Path<Uuid>) -> impl Responder {
-    todo!("Implement delete_image method.");
-    HttpResponse::NoContent().finish()
+pub async fn delete_image(
+    auth: AuthContext,
+    img_id: web::Path<Uuid>,
+    db: web::Data<Database>,
+    storage: web::Data<dyn ImageStorage>,
+) -> ActixResult<HttpResponse> {
+    let img_id = img_id.into_inner();
+    let user_id = auth.user_id;
+
+    let hash: ImageHash = database::open(db, move |conn| {
+        use crate::schema::{stored_images, user_images};
+        use diesel::prelude::*;
+
+        let hash = diesel::delete(
+            user_images::table.filter(
+                user_images::id
+                    .eq(img_id)
+                    .and(user_images::user_id.eq(user_id)),
+            ),
+        )
+        .returning(user_images::image_id)
+        .get_result(conn)
+        .map_err(DatabaseError::<ApiError>::from)?;
+
+        // Check if there are any other user_images with the same hash
+        let count = user_images::table
+            .filter(user_images::image_id.eq(&hash))
+            .count()
+            .get_result::<i64>(conn)?;
+
+        // If there are no other user_images, delete the stored_image
+        if count == 0 {
+            diesel::delete(stored_images::table.filter(stored_images::hash.eq(hash)))
+                .execute(conn)?;
+        }
+
+        Ok(hash)
+    })
+    .await?;
+
+    storage.delete_all_kinds(hash).await?;
+    Ok(HttpResponse::NoContent().finish())
 }
 
 pub fn configure(cfg: &mut web::ServiceConfig) {

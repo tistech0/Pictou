@@ -13,6 +13,7 @@ use diesel::{
     serialize::ToSql,
     sql_types,
 };
+use futures::try_join;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod local;
@@ -42,6 +43,18 @@ pub trait ImageStorage: Send + Sync {
         hash: ImageHash,
         kind: StoredImageKind,
     ) -> io::Result<Pin<Box<dyn AsyncWrite>>>;
+
+    /// Permanently deletes the image with the given hash and kind.
+    async fn delete(&self, hash: ImageHash, kind: StoredImageKind) -> io::Result<()>;
+
+    /// Permanently deletes all kinds of the image with the given hash.
+    async fn delete_all_kinds(&self, hash: ImageHash) -> io::Result<()> {
+        try_join! {
+            self.delete(hash, StoredImageKind::Original),
+            self.delete(hash, StoredImageKind::CompressedJpegXl),
+        }
+        .map(|_| ())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

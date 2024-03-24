@@ -103,6 +103,17 @@ impl ImageStorage for LocalImageStorage {
             write_guard: guard,
         }))
     }
+
+    async fn delete(&self, hash: ImageHash, kind: StoredImageKind) -> io::Result<()> {
+        let path = self.make_path(hash, kind);
+        // no need to lock the file, we're just deleting it
+        // any open handles with crash when they try to access the file
+        match tokio::fs::remove_file(path).await {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
 }
 
 /// Provides a file from being written to while this guard is held.
@@ -220,7 +231,7 @@ mod tests {
 
         assert!(tokio::fs::metadata(&expected_path).await.unwrap().is_file());
         assert_eq!(
-            tokio::fs::read(expected_path).await.unwrap(),
+            tokio::fs::read(&expected_path).await.unwrap(),
             b"this is the original image"
         );
 
@@ -234,6 +245,14 @@ mod tests {
             .load(hash, StoredImageKind::CompressedJpegXl)
             .await
             .is_err());
+
+        storage
+            .delete(hash, StoredImageKind::Original)
+            .await
+            .expect("failed to delete file");
+        tokio::fs::metadata(&expected_path)
+            .await
+            .expect_err("file should not exist");
     }
 
     #[actix_rt::test]
@@ -256,7 +275,7 @@ mod tests {
 
         assert!(tokio::fs::metadata(&expected_path).await.unwrap().is_file());
         assert_eq!(
-            tokio::fs::read(expected_path).await.unwrap(),
+            tokio::fs::read(&expected_path).await.unwrap(),
             b"this is the JXL image"
         );
 
@@ -270,6 +289,14 @@ mod tests {
 
         // loading the wrong kind should fail
         assert!(storage.load(hash, StoredImageKind::Original).await.is_err());
+
+        storage
+            .delete(hash, StoredImageKind::CompressedJpegXl)
+            .await
+            .expect("failed to delete file");
+        tokio::fs::metadata(&expected_path)
+            .await
+            .expect_err("file should not exist");
     }
 
     #[actix_rt::test]
@@ -319,5 +346,22 @@ mod tests {
         .expect_err("should hang, write lock is held");
 
         drop(excl_lock);
+    }
+
+    #[actix_rt::test]
+    async fn test_delete_non_existing() {
+        let root = tempfile::tempdir().expect("failed to create tempdir");
+        let storage = LocalImageStorage::new(&root);
+
+        let hash = ImageHash::from_md5_bytes(0xffeeddccbbaa998877665544332211u128.to_be_bytes());
+
+        storage
+            .delete(hash, StoredImageKind::CompressedJpegXl)
+            .await
+            .expect("errors? what errors?");
+        storage
+            .delete(hash, StoredImageKind::Original)
+            .await
+            .expect("!!!");
     }
 }
