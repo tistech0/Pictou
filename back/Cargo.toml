@@ -51,6 +51,12 @@ reqwest = { version = "~0.11.26", default-features = false, features = [
 url = { version = "~2.5.0", features = ["serde"] }
 async-trait = "~0.1.78"
 pin-project = "^1.1.5"
+image-backend = { version = "~0.25.0", package = "image", default-features = false, features = [
+    "png",
+    "jpeg",
+    "gif",
+] }
+md-5 = "0.10.6"
 
 [dev-dependencies]
 actix-rt = "^2.9.0"

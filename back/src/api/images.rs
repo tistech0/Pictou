@@ -25,9 +25,9 @@ use actix_web::{
 use diesel::{deserialize::Queryable, prelude::Insertable, Selectable};
 use futures::prelude::stream::*;
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, BufReader};
 use tokio_util::io::{ReaderStream, StreamReader};
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -192,7 +192,7 @@ pub async fn get_image(
     })
     .await?;
 
-    trace!(%hash, mime_type, "opening image for reading");
+    debug!(%hash, mime_type, "opening image for reading");
     let image_source = image_storage
         .load(hash, StoredImageKind::Original)
         .await
@@ -330,8 +330,6 @@ pub async fn upload_image(
 
     info!("decoding uploaded image");
 
-    // TODO: add decoding timeout
-
     let mut payload = payload.try_skip_while(|field| future::ready(Ok(field.name() != "image")));
     let image_payload = payload
         .try_next()
@@ -352,12 +350,15 @@ pub async fn upload_image(
         io::Error::other(ApiError::invalid_encoding(error))
     });
 
-    let mut input = StreamReader::new(image_payload);
+    let mut input = BufReader::new(StreamReader::new(image_payload));
 
-    let decoded = image::decode_image(image_type, Pin::new(&mut input))
+    let decoded = image::decode(image_type, Pin::new(&mut input), size)
         .await
         .map_err(|error| {
-            error!(error = &error as &dyn StdError, "failed to decode image");
+            error!(
+                error = AsRef::<dyn StdError>::as_ref(&error),
+                "failed to decode image"
+            );
             ApiError::invalid_encoding(error)
         })?;
     drop(input);
@@ -365,29 +366,18 @@ pub async fn upload_image(
     // consume the rest of the payload stream, not doing so would result in an error
     while let Some(_extra_field) = payload.next().await.transpose()? {}
 
-    // exceeding 2**63 for size, width, or height *should* be impossible, but just in case...
-    let image_size: i64 = decoded.size.try_into().expect("image size overflowed i64");
-    let image_width: i64 = decoded
-        .width
-        .try_into()
-        .expect("image width overflowed i64");
-    let image_height: i64 = decoded
-        .height
-        .try_into()
-        .expect("image height overflowed i64");
+    let to_store = NewStoredImage {
+        hash: decoded.hash(),
+        compression_alg: "none".to_owned(),
+        size: decoded.size(),
+        width: decoded.width(),
+        height: decoded.height(),
+        orignal_mime_type: image_type.as_mime().to_owned(),
+    };
 
     let (user_image_id, need_storage): (Uuid, bool) = database::open(db, move |conn| {
         use crate::schema::{stored_images, user_images};
         use diesel::prelude::*;
-
-        let to_store = NewStoredImage {
-            hash: decoded.hash,
-            compression_alg: "none".to_owned(),
-            size: image_size,
-            width: image_width,
-            height: image_height,
-            orignal_mime_type: image_type.as_mime().to_owned(),
-        };
 
         info!(?to_store, "decoding complete, storing image in database");
 
@@ -402,7 +392,7 @@ pub async fn upload_image(
 
         let need_storage = match stored {
             None => {
-                debug!(hash = %decoded.hash, "image already present, no storage needed");
+                debug!(hash = %to_store.hash, "image already present, no storage needed");
                 false
             }
             Some(stored) => {
@@ -414,7 +404,7 @@ pub async fn upload_image(
                     || to_store.height != stored.height
                     || to_store.orignal_mime_type != stored.orignal_mime_type
                 {
-                    error!(hash = %decoded.hash, "hash collision detected");
+                    error!(hash = %to_store.hash, "hash collision detected");
                     return Err(DatabaseError::Custom(ApiError::new(
                         actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
                         ApiErrorCode::Unknown,
@@ -432,7 +422,7 @@ pub async fn upload_image(
         let user_image_id = diesel::insert_into(user_images::table)
             .values(NewUserImage {
                 user_id: auth.user_id,
-                image_id: decoded.hash,
+                image_id: to_store.hash,
             })
             .on_conflict((user_images::user_id, user_images::image_id))
             .do_update()
@@ -447,18 +437,18 @@ pub async fn upload_image(
     .await?;
 
     if need_storage {
-        info!(hash = %decoded.hash, %user_image_id, "compressing and storing image in storage");
+        info!(hash = %decoded.hash(), %user_image_id, "compressing and storing image in storage");
 
         // TODO: it would be wise to do these operations in a separate thread in order to not block
         // the client
         let mut output = storage
-            .store(decoded.hash, StoredImageKind::Original)
+            .store(decoded.hash(), StoredImageKind::Original)
             .await?;
-        let mut to_write_buf = Cursor::new(&decoded.bytes);
+        let mut to_write_buf = Cursor::new(decoded.original_bytes());
         output.write_all_buf(&mut to_write_buf).await?;
     }
 
-    info!(hash = %decoded.hash, %user_image_id, "image upload complete");
+    info!(hash = %decoded.hash(), %user_image_id, "image upload complete");
 
     Ok(HttpResponse::Ok().json(ImageUploadResponse { id: user_image_id }))
 }
