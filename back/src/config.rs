@@ -25,6 +25,8 @@ pub struct AppConfiguration {
     pub refresh_token_lifetime: Duration,
     pub access_token_lifetime: Duration,
     pub max_image_size: usize,
+    pub images_query_default_limit: u32,
+    pub images_query_max_limit: u32,
 }
 
 impl AppConfiguration {
@@ -64,6 +66,10 @@ impl AppConfiguration {
             refresh_token_lifetime: Duration::seconds(env::var("REFRESH_TOKEN_LIFETIME")?.parse()?),
             access_token_lifetime: Duration::seconds(env::var("ACCESS_TOKEN_LIFETIME")?.parse()?),
             max_image_size: env::var("MAX_IMAGE_SIZE").map_or(Ok(10_000_000), |s| s.parse())?,
+            images_query_default_limit: env::var("IMAGES_QUERY_DEFAULT_LIMIT")
+                .map_or(Ok(50), |s| s.parse())?,
+            images_query_max_limit: env::var("IMAGES_QUERY_MAX_LIMIT")
+                .map_or(Ok(1024), |s| s.parse())?,
         })
     }
 }
@@ -86,6 +92,8 @@ impl Default for AppConfiguration {
             refresh_token_lifetime: Duration::days(30),
             access_token_lifetime: Duration::minutes(3),
             max_image_size: 10_000_000,
+            images_query_default_limit: 50,
+            images_query_max_limit: 1024,
         }
     }
 }
@@ -108,6 +116,11 @@ impl Debug for AppConfiguration {
             .field("refresh_token_lifetime", &self.refresh_token_lifetime)
             .field("access_token_lifetime", &self.access_token_lifetime)
             .field("max_image_size", &self.max_image_size)
+            .field(
+                "images_query_default_limit",
+                &self.images_query_default_limit,
+            )
+            .field("images_query_max_limit", &self.images_query_max_limit)
             .finish()
     }
 }

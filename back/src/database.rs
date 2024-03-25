@@ -10,7 +10,7 @@ use ::r2d2::PooledConnection;
 use actix_web::{error::BlockingError, http::StatusCode, web, HttpResponse, ResponseError};
 use diesel::{
     r2d2::{self, ConnectionManager},
-    Connection, PgConnection,
+    sql_function, Connection, PgConnection, Queryable,
 };
 use tracing::{debug, error, info};
 
@@ -204,5 +204,36 @@ impl ToDatabasePointer for Arc<Database> {
 impl ToDatabasePointer for web::Data<Database> {
     fn to_database_ptr(&self) -> Arc<Database> {
         self.clone().into_inner()
+    }
+}
+
+sql_function! {
+    /// The `array_agg` SQL function.
+    /// <https://www.postgresql.org/docs/current/functions-aggregate.html#FUNCTIONS-AGGREGATE>
+    #[aggregate]
+    #[sql_name = "array_agg"]
+    fn array_agg<ST: diesel::sql_types::SingleValue + 'static>(expr: ST) -> diesel::sql_types::Array<ST>;
+}
+
+/// Automatically excludes `None`/`NULL` values from a `Vec<Option<T>>` when deserializing.
+#[repr(transparent)]
+pub struct VecOfNonNull<T>(pub Vec<T>);
+
+impl<T> From<VecOfNonNull<T>> for Vec<T> {
+    #[inline]
+    fn from(val: VecOfNonNull<T>) -> Self {
+        val.0
+    }
+}
+
+impl<ST, DB, T> Queryable<ST, DB> for VecOfNonNull<T>
+where
+    DB: diesel::backend::Backend,
+    Vec<Option<T>>: Queryable<ST, DB>,
+{
+    type Row = <Vec<Option<T>> as Queryable<ST, DB>>::Row;
+
+    fn build(row: Self::Row) -> diesel::deserialize::Result<Self> {
+        Vec::build(row).map(|vec| VecOfNonNull(vec.into_iter().flatten().collect()))
     }
 }
