@@ -10,7 +10,7 @@ use ::r2d2::PooledConnection;
 use actix_web::{error::BlockingError, http::StatusCode, web, HttpResponse, ResponseError};
 use diesel::{
     r2d2::{self, ConnectionManager},
-    PgConnection,
+    Connection, PgConnection,
 };
 use tracing::{debug, error, info};
 
@@ -30,6 +30,9 @@ pub enum DatabaseError<E = Infallible> {
     #[allow(dead_code)]
     Custom(E),
 }
+
+/// A version of `DatabaseError` that does not allow custom errors.
+pub type SimpleDatabaseError = DatabaseError<Infallible>;
 
 /// The result type used by the database module.
 pub type DatabaseResult<T, E = Infallible> = Result<T, DatabaseError<E>>;
@@ -60,7 +63,7 @@ impl Database {
     }
 }
 
-/// Opens a connection to the database and runs the given function with it.
+/// Opens a connection to the database and runs the given function with it in a transaction.
 ///
 /// This function is a wrapper around [`actix_web::web::block`] that automatically
 /// handles the connection to the database and the error types.
@@ -106,7 +109,7 @@ where
             );
             DatabaseError::R2d2(error)
         })?;
-        scope(&mut conn)
+        conn.transaction::<R, DatabaseError<E>, _>(scope)
     })
     .await
     .unwrap_or_else(|err| {
@@ -170,19 +173,19 @@ impl<E: ResponseError> ResponseError for DatabaseError<E> {
     }
 }
 
-impl From<::r2d2::Error> for DatabaseError {
+impl<E> From<::r2d2::Error> for DatabaseError<E> {
     fn from(err: ::r2d2::Error) -> Self {
         DatabaseError::R2d2(err)
     }
 }
 
-impl From<BlockingError> for DatabaseError {
+impl<E> From<BlockingError> for DatabaseError<E> {
     fn from(err: BlockingError) -> Self {
         DatabaseError::Blocking(err)
     }
 }
 
-impl From<diesel::result::Error> for DatabaseError {
+impl<E> From<diesel::result::Error> for DatabaseError<E> {
     fn from(err: diesel::result::Error) -> Self {
         DatabaseError::Diesel(err)
     }

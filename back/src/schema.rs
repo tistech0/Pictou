@@ -37,9 +37,11 @@ diesel::table! {
         hash -> Bytea,
         #[max_length = 255]
         compression_alg -> Varchar,
-        size -> Int4,
-        width -> Int4,
-        height -> Int4,
+        size -> Int8,
+        width -> Int8,
+        height -> Int8,
+        #[max_length = 255]
+        orignal_mime_type -> Varchar,
     }
 }
 

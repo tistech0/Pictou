@@ -42,6 +42,10 @@ pub fn album_not_found_example() -> ApiError {
     ApiError::not_found_error("Album with id 15")
 }
 
+pub fn image_payload_too_large_example() -> ApiError {
+    ApiError::image_too_big(10_000_000)
+}
+
 #[derive(ToSchema)]
 #[schema(value_type = String, format = Binary)]
 pub struct Binary(#[allow(dead_code)] String);

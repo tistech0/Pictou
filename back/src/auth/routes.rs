@@ -20,7 +20,7 @@ use crate::{
         AuthContext, AuthenticationResponse, PersistedUserInfo, RefreshTokenParams,
     },
     config::AppConfiguration,
-    database::{self, Database, DatabaseError},
+    database::{self, Database, SimpleDatabaseError},
     error_handler::ApiError,
 };
 
@@ -37,7 +37,7 @@ pub fn configure(clients: web::Data<OAuth2Clients>, service_cfg: &mut ServiceCon
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
-#[into_params(style = Form, parameter_in = Path)]
+#[into_params(style = Simple, parameter_in = Path)]
 struct AuthPathParameters {
     #[param(inline)]
     provider: ClientType,
@@ -180,7 +180,7 @@ pub async fn refresh_token(
                 .select((users::email, users::auth_type, users::oauth_token))
                 .get_result(conn)
                 .optional()
-                .map_err(DatabaseError::from)
+                .map_err(SimpleDatabaseError::from)
         })
         .await?;
 
@@ -211,7 +211,7 @@ pub async fn refresh_token(
             ))
             .returning(PersistedUserInfo::as_returning())
             .get_result(conn)
-            .map_err(DatabaseError::from)
+            .map_err(SimpleDatabaseError::from)
     })
     .await?;
 
@@ -235,7 +235,6 @@ pub async fn refresh_token(
             example = json!(ApiError::unauthorized_error()), content_type = "application/json"
         ),
     ),
-    params(AuthPathParameters),
     tag="auth"
 )]
 #[get("/auth/logout")]
@@ -251,7 +250,7 @@ pub async fn logout(db: web::Data<Database>, auth: AuthContext) -> ActixResult<H
                 users::refresh_token_exp.eq(OffsetDateTime::now_utc()),
             ))
             .execute(conn)
-            .map_err(DatabaseError::from)
+            .map_err(SimpleDatabaseError::from)
     })
     .await?;
 

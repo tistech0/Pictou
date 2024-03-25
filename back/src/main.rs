@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, sync::Arc};
 
 use actix_session::{storage::CookieSessionStore, SessionMiddleware};
 use actix_web::{
@@ -17,6 +17,7 @@ mod auth;
 mod config;
 mod database;
 mod error_handler;
+mod image;
 mod log;
 mod openapi;
 mod schema;
@@ -26,6 +27,7 @@ use crate::{
     auth::{AuthContext, OAuth2Clients},
     config::AppConfiguration,
     database::Database,
+    storage::{ImageStorage, LocalImageStorage},
 };
 
 #[get("/")]
@@ -62,6 +64,8 @@ async fn init() -> anyhow::Result<()> {
     let address = app_cfg.address.to_owned();
     let port = app_cfg.port;
     let database = web::Data::new(Database::new(&app_cfg)?);
+    let image_storage =
+        web::Data::from(Arc::new(LocalImageStorage::new("storage")) as Arc<dyn ImageStorage>);
 
     // lifted the call to HttpServer::new because it does not accept async
     let auth_clients = web::Data::new(OAuth2Clients::new(app_cfg.clone()).await);
@@ -71,6 +75,7 @@ async fn init() -> anyhow::Result<()> {
         App::new()
             .app_data(app_cfg.clone())
             .app_data(database.clone())
+            .app_data(image_storage.clone())
             .wrap(TracingLogger::default())
             .wrap(NormalizePath::trim())
             .wrap(
