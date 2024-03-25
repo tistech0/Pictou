@@ -11,6 +11,7 @@ diesel::table! {
         id -> Uuid,
         album_id -> Uuid,
         image_id -> Bytea,
+        created_at -> Timestamptz,
     }
 }
 
@@ -21,6 +22,8 @@ diesel::table! {
         #[max_length = 255]
         name -> Varchar,
         tags -> Array<Nullable<Text>>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -29,6 +32,7 @@ diesel::table! {
         id -> Uuid,
         album_id -> Uuid,
         user_id -> Uuid,
+        created_at -> Timestamptz,
     }
 }
 
@@ -42,6 +46,7 @@ diesel::table! {
         height -> Int8,
         #[max_length = 255]
         orignal_mime_type -> Varchar,
+        created_at -> Timestamptz,
     }
 }
 
@@ -51,6 +56,8 @@ diesel::table! {
         user_id -> Uuid,
         image_id -> Bytea,
         tags -> Array<Nullable<Text>>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
@@ -72,6 +79,8 @@ diesel::table! {
         given_name -> Nullable<Varchar>,
         #[max_length = 255]
         family_name -> Nullable<Varchar>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
     }
 }
 
