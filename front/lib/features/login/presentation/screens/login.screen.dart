@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/domain/services/api_service.dart';
-import 'package:front/features/login/domain/use_cases/sign_in_with_google_use_case.dart';
+import 'package:front/features/login/domain/use_cases/auth.use_case.dart';
 
 class LoginScreen extends StatelessWidget {
-  final SignInWithGoogleUseCase signInWithGoogleUseCase;
+  final AuthUseCase signInWithGoogleUseCase;
 
   LoginScreen({super.key})
-      : signInWithGoogleUseCase = SignInWithGoogleUseCase(ApiService());
+      : signInWithGoogleUseCase = AuthUseCase(ApiService());
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +33,13 @@ class LoginScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => signInWithGoogleUseCase.execute(context),
+              onPressed: () {
+                // Assurez-vous d'avoir une instance de AuthUseCase disponible, soit par injection de dépendance soit instanciée localement
+                final authUseCase = AuthUseCase(ApiService());
+
+                // Exécution de l'action de connexion
+                authUseCase.execute(AuthAction.signInWithGoogle, context);
+              },
               child: Text(
                 'Login',
                 style: TextStyle(color: Colors.blue),
