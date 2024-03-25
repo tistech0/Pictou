@@ -20,8 +20,4 @@ class UserEntity {
       refreshToken: refreshToken ?? this.refreshToken,
     );
   }
-
-  void updateAccessToken({required String updatedAccessToken}) {
-    accessToken = updatedAccessToken;
-  }
 }
