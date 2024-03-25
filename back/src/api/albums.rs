@@ -5,9 +5,13 @@ use crate::api::{
 };
 use crate::api::{json_payload_error_example, PaginationQuery};
 use crate::auth::AuthContext;
+use crate::database;
+use crate::database::{Database, SimpleDatabaseError};
 use crate::error_handler::ApiError;
-use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, patch, post, web, HttpResponse, Responder, Result as ActixResult};
+use diesel::Insertable;
 use serde::{Deserialize, Serialize};
+use tracing::info;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -17,8 +21,6 @@ const CONTEXT_PATH: &str = "/albums";
 pub struct AlbumPost {
     name: String,
     tags: Vec<String>,
-    shared_with: Vec<String>,
-    images: Vec<Uuid>,
 }
 
 #[derive(Deserialize, Serialize, ToSchema)]
@@ -34,6 +36,14 @@ pub struct Album {
 #[derive(Deserialize, Serialize, ToSchema)]
 pub struct AlbumList {
     albums: Vec<Album>,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = crate::schema::albums)]
+struct NewAlbum {
+    owner_id: Uuid,
+    name: String,
+    tags: Vec<String>,
 }
 
 /// Get an album by its id.
@@ -114,16 +124,40 @@ pub async fn get_albums(auth: AuthContext, query: web::Query<PaginationQuery>) -
     )
 )]
 #[post("")]
-pub async fn create_album(auth: AuthContext, album: web::Json<AlbumPost>) -> impl Responder {
-    todo!("Implement create_album method.");
-    HttpResponse::Ok().json(Album {
-        id: Uuid::new_v4(),
-        owner_id: Uuid::new_v4(),
-        name: "My Album".to_string(),
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-        shared_with: vec!["user1".to_string()],
-        images: vec![],
+pub async fn create_album(
+    auth: AuthContext,
+    album: web::Json<AlbumPost>,
+    db: web::Data<Database>,
+) -> ActixResult<HttpResponse> {
+    let new_album = database::open(db, move |conn| {
+        use crate::schema::albums;
+        use diesel::prelude::*;
+
+        // add to albums table
+        let (id, owner_id, name, tags): (Uuid, Uuid, String, Vec<Option<String>>) =
+            diesel::insert_into(albums::table)
+                .values(NewAlbum {
+                    owner_id: auth.user_id,
+                    name: album.name.clone(),
+                    tags: album.tags.clone(),
+                })
+                .returning((albums::id, albums::owner_id, albums::name, albums::tags))
+                .get_result(conn)
+                .map_err(SimpleDatabaseError::from)?;
+        info!(%id, "Created new album");
+
+        let new_album = Album {
+            id,
+            owner_id,
+            name,
+            tags: tags.into_iter().filter_map(|t| t).collect(),
+            shared_with: vec![],
+            images: vec![],
+        };
+        Ok(new_album)
     })
+    .await?;
+    Ok(HttpResponse::Ok().json(new_album))
 }
 
 /// Modify an album
