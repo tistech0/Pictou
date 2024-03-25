@@ -35,7 +35,7 @@ use super::Binary;
 
 const CONTEXT_PATH: &str = "/images";
 
-#[derive(Clone, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Copy, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ImageQuality {
     Low,
@@ -70,14 +70,15 @@ pub struct ImagePayload {
     image: Binary,
 }
 
-#[derive(Deserialize, Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema, Queryable)]
 pub struct ImageMetaData {
     id: Uuid,
     owner_id: Uuid,
     caption: String,
+    #[diesel(deserialize_as = crate::database::VecOfNonNull<String>)]
     tags: Vec<String>,
+    #[diesel(deserialize_as = crate::database::VecOfNonNull<String>)]
     shared_with: Vec<String>,
-    url: String,
 }
 
 #[derive(Deserialize, Serialize, ToSchema)]
@@ -211,8 +212,6 @@ pub async fn get_image(
 ///
 /// This method returns the metadata of the images not the effective images. The client must make a request for each image independently.
 /// The list can be filtered by quality, and paginated.
-#[allow(unused_variables)]
-#[allow(unreachable_code)]
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
@@ -257,7 +256,7 @@ pub async fn get_image(
             content_type = "application/json"
         ),
     ),
-    tag="images",
+    tag = "images",
     security(
         ("JWT Access Token" = [])
     )
@@ -266,9 +265,58 @@ pub async fn get_image(
 pub async fn get_images(
     auth: AuthContext,
     query: web::Query<ImagesQuery>,
+    app_cfg: web::Data<AppConfiguration>,
+    db: web::Data<Database>,
 ) -> Result<impl Responder, ActixError> {
-    todo!("Implement get_images method.");
-    Ok(web::Json(ImagesMetaData { images: vec![] }))
+    let limit = query
+        .limit
+        .unwrap_or(app_cfg.images_query_default_limit)
+        .min(app_cfg.images_query_max_limit);
+    let offset = query.offset.unwrap_or(0);
+    let _quality = query.quality.unwrap_or(ImageQuality::Medium); // FIXME: image quality is ignored for now
+
+    let images: Vec<ImageMetaData> = database::open(db, move |conn| {
+        use crate::schema::{album_images, shared_albums, user_images, users};
+        use diesel::prelude::*;
+
+        // Corresponds to the following SQL:
+        /*
+            SELECT public.user_images.id,
+                   public.user_images.user_id    AS owner_id,
+                   public.user_images.caption,
+                   public.user_images.tags,
+            array_agg(public.users.email) AS shared_with
+            FROM public.user_images
+                     LEFT JOIN public.album_images ON user_images.id = album_images.image_id
+                     LEFT JOIN public.shared_albums ON shared_albums.album_id = album_images.album_id
+                     LEFT JOIN public.users ON shared_albums.user_id = users.id
+            WHERE public.user_images.user_id = {auth.user_id}
+            GROUP BY user_images.id
+            LIMIT {limit} OFFSET {offset};
+        */
+        user_images::table
+            .left_outer_join(album_images::table)
+            .left_outer_join(
+                shared_albums::table.on(album_images::album_id.eq(shared_albums::album_id)),
+            )
+            .left_outer_join(users::table.on(shared_albums::user_id.eq(users::id)))
+            .group_by(user_images::id)
+            .select((
+                user_images::id,
+                user_images::user_id,
+                user_images::caption,
+                user_images::tags,
+                crate::database::array_agg(users::email.nullable()),
+            ))
+            .filter(user_images::user_id.eq(auth.user_id))
+            .limit(limit as i64)
+            .offset(offset as i64)
+            .load::<ImageMetaData>(conn)
+            .map_err(SimpleDatabaseError::from)
+    })
+    .await?;
+
+    Ok(web::Json(ImagesMetaData { images }))
 }
 
 /// Upload an image
@@ -526,7 +574,6 @@ pub async fn edit_image(
         caption: "my_image".to_string(),
         tags: vec![],
         shared_with: vec![],
-        url: "/images/1".to_string(),
     })
 }
 
