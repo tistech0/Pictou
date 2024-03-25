@@ -38,7 +38,7 @@ dependencies:
   provider: ^6.0.0
   image_picker: ^1.0.7
   dio: ^4.0.0
-  flutter_web_auth: ^0.3.1
+  webview_flutter: ^3.0.0 # Vérifiez la dernière version sur pub.dev
 
 
 dev_dependencies:
