@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:front/features/home/presentation/screens/homepage.screen.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class WebViewPage extends StatefulWidget {
@@ -9,6 +10,8 @@ class WebViewPage extends StatefulWidget {
 }
 
 class _WebViewPageState extends State<WebViewPage> {
+  late WebViewController _controller;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,31 +19,26 @@ class _WebViewPageState extends State<WebViewPage> {
         title: const Text('Google Auth'),
       ),
       body: WebView(
-        initialUrl:
-            'http://localhost:8000/api/auth/login/google', // Mettez ici votre URL d'authentification Google
+        initialUrl: 'http://localhost:8000/api/auth/login/google',
         javascriptMode: JavascriptMode.unrestricted,
         userAgent: 'random',
-        navigationDelegate: (NavigationRequest request) {
-          // Vérifiez si l'URL de redirection est atteinte
-          if (request.url
+        onWebViewCreated: (WebViewController webViewController) {
+          _controller = webViewController;
+        },
+        onPageFinished: (String url) async {
+          //if url == callback google
+          if (url
               .startsWith('http://localhost:8000/api/auth/callback/google')) {
-            print('ok');
-            // L'URL de redirection est atteinte, vous pouvez maintenant extraire le token ou effectuer une autre action
-            // Par exemple : extrayez le token d'authentification de l'URL
-            final uri = Uri.parse(request.url);
+            final String bodyHtml = await _controller
+                .runJavascriptReturningResult('document.body.innerHTML;');
+            //print 'token' on body response
 
-            //get the body response
-            //get request body reponse
-            final token = uri.queryParameters['token'];
-            print('Token: $token');
-
-            // Enregistrez le token dans le stockage local ou effectuez une autre action
-
-            // Fermez la WebView et retournez à une autre partie de votre application
-            Navigator.of(context).pop();
-            return NavigationDecision.prevent;
+            print(bodyHtml);
+            //pop on homepage
+            Navigator.of(context).pop(
+              MaterialPageRoute(builder: (context) => const HomePage()),
+            );
           }
-          return NavigationDecision.navigate;
         },
       ),
     );
