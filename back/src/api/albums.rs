@@ -66,16 +66,86 @@ struct NewAlbum {
     )
 )]
 #[get("/{id}")]
-pub async fn get_album(auth: AuthContext, album_uuid: web::Path<Uuid>) -> impl Responder {
-    todo!("Implement get_album method.");
-    HttpResponse::Ok().json(Album {
-        id: album_uuid.into_inner(),
-        owner_id: Uuid::new_v4(),
-        name: "My Album".to_string(),
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-        shared_with: vec!["user1".to_string()],
-        images: vec![],
+pub async fn get_album(
+    auth: AuthContext,
+    album_uuid: web::Path<Uuid>,
+    db: web::Data<Database>,
+) -> ActixResult<HttpResponse> {
+    // Corresponds to the following SQL:
+    /*SELECT
+      albums.id,
+      albums.owner_id,
+      albums.name,
+      albums.tags,
+      array_agg(users.email) AS shared_with,
+      user_images.id,
+      user_images.user_id    AS owner_id,
+      user_images.caption,
+      user_images.tags
+    FROM public.albums
+      LEFT JOIN public.shared_albums ON shared_albums.album_id = albums.id
+      LEFT JOIN public.users ON users.id = shared_albums.user_id
+      LEFT JOIN public.album_images ON album_images.album_id = albums.id
+      LEFT JOIN public.user_images ON user_images.id = album_images.image_id
+    WHERE
+      albums.id = '5761efa1-cd8d-445e-a53c-ea6c824a8b77'
+    GROUP BY
+      albums.id,
+      user_images.id */
+
+    let album = database::open(db, move |conn| {
+        use crate::schema::{album_images, albums, shared_albums, user_images, users};
+        use diesel::prelude::*;
+
+        // Get the album meta data
+        let (id, owner_id, name, tags): (Uuid, Uuid, String, Vec<Option<String>>) = albums::table
+            .select((albums::id, albums::owner_id, albums::name, albums::tags))
+            .filter(albums::id.eq(album_uuid.clone()))
+            .get_result(conn)
+            .optional()
+            .map_err(SimpleDatabaseError::from)?
+            .expect("Album not found");
+
+        // Get the list of users the album is shared with
+        let shared_with = users::table
+            .inner_join(shared_albums::table.on(shared_albums::user_id.eq(users::id)))
+            .select(users::email)
+            .filter(shared_albums::album_id.eq(album_uuid.clone()))
+            .load::<String>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        // Get the list of images in the album
+        let images = user_images::table
+            .left_outer_join(album_images::table)
+            .left_outer_join(
+                shared_albums::table.on(album_images::album_id.eq(shared_albums::album_id)),
+            )
+            .left_outer_join(users::table.on(shared_albums::user_id.eq(users::id)))
+            .group_by(user_images::id)
+            .select((
+                user_images::id,
+                user_images::user_id,
+                user_images::caption,
+                user_images::tags,
+                crate::database::array_agg(users::email.nullable()),
+            ))
+            .filter(album_images::album_id.eq(album_uuid.clone()))
+            .load::<ImageMetaData>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        // Create the album object
+        let album = Album {
+            id,
+            owner_id,
+            name,
+            tags: tags.into_iter().filter_map(|t| t).collect(),
+            shared_with,
+            images,
+        };
+        Ok(album)
     })
+    .await?;
+    Ok(HttpResponse::Ok().json(album))
 }
 
 /// Get a list of albums
@@ -98,9 +168,13 @@ pub async fn get_album(auth: AuthContext, album_uuid: web::Path<Uuid>) -> impl R
     )
 )]
 #[get("")]
-pub async fn get_albums(auth: AuthContext, query: web::Query<PaginationQuery>) -> impl Responder {
+pub async fn get_albums(
+    auth: AuthContext,
+    query: web::Query<PaginationQuery>,
+    db: web::Data<Database>,
+) -> ActixResult<HttpResponse> {
     todo!("Implement get_albums method.");
-    HttpResponse::Ok().json(AlbumList { albums: vec![] })
+    Ok(HttpResponse::Ok().json(AlbumList { albums: vec![] }))
 }
 
 /// Create a new album
