@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/domain/services/api_service.dart';
-import 'package:front/features/login/domain/use_cases/sign_in_with_google_use_case.dart';
+import 'package:front/features/login/presentation/widgets/webviewpage.dart';
 
 class LoginScreen extends StatelessWidget {
-  final SignInWithGoogleUseCase signInWithGoogleUseCase;
-
-  LoginScreen({super.key})
-      : signInWithGoogleUseCase = SignInWithGoogleUseCase(ApiService());
+  const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +30,11 @@ class LoginScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => signInWithGoogleUseCase.execute(context),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const WebViewPage()),
+                );
+              },
               child: Text(
                 'Login',
                 style: TextStyle(color: Colors.blue),
