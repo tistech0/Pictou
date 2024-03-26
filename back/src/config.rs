@@ -68,7 +68,7 @@ impl AppConfiguration {
                 .map(oauth2::ClientSecret::new),
             refresh_token_lifetime: Duration::seconds(env::var("REFRESH_TOKEN_LIFETIME")?.parse()?),
             access_token_lifetime: Duration::seconds(env::var("ACCESS_TOKEN_LIFETIME")?.parse()?),
-            max_image_size: env::var("MAX_IMAGE_SIZE").map_or(Ok(10_000_000), |s| s.parse())?,
+            max_image_size: env::var("MAX_IMAGE_SIZE").map_or(Ok(20_000_000), |s| s.parse())?,
             images_query_default_limit: env::var("IMAGES_QUERY_DEFAULT_LIMIT")
                 .map_or(Ok(50), |s| s.parse())?,
             images_query_max_limit: env::var("IMAGES_QUERY_MAX_LIMIT")
@@ -100,7 +100,7 @@ impl Default for AppConfiguration {
             google_client_secret: Default::default(),
             refresh_token_lifetime: Duration::days(30),
             access_token_lifetime: Duration::minutes(3),
-            max_image_size: 10_000_000,
+            max_image_size: 20_000_000,
             images_query_default_limit: 50,
             images_query_max_limit: 1024,
             albums_query_default_limit: 25,
