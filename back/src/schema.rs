@@ -10,8 +10,8 @@ diesel::table! {
     album_images (id) {
         id -> Uuid,
         album_id -> Uuid,
-        image_id -> Bytea,
         created_at -> Timestamptz,
+        image_id -> Uuid,
     }
 }
 
@@ -58,6 +58,7 @@ diesel::table! {
         tags -> Array<Nullable<Text>>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        caption -> Text,
     }
 }
 
@@ -85,7 +86,7 @@ diesel::table! {
 }
 
 diesel::joinable!(album_images -> albums (album_id));
-diesel::joinable!(album_images -> stored_images (image_id));
+diesel::joinable!(album_images -> user_images (image_id));
 diesel::joinable!(albums -> users (owner_id));
 diesel::joinable!(shared_albums -> albums (album_id));
 diesel::joinable!(shared_albums -> users (user_id));

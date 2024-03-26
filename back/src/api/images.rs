@@ -22,7 +22,7 @@ use actix_web::{
     delete, error::ErrorInternalServerError, get, http::header, patch, post, web,
     Error as ActixError, HttpResponse, Responder, Result as ActixResult,
 };
-use diesel::{deserialize::Queryable, prelude::Insertable, Selectable};
+use diesel::{deserialize::Queryable, prelude::Insertable, query_builder::AsChangeset, Selectable};
 use futures::prelude::stream::*;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncWriteExt, BufReader};
@@ -31,11 +31,11 @@ use tracing::{debug, error, info};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use super::Binary;
+use super::{process_tags, Binary};
 
 const CONTEXT_PATH: &str = "/images";
 
-#[derive(Clone, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Copy, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ImageQuality {
     Low,
@@ -49,7 +49,6 @@ pub struct ImageQuery {
     quality: Option<ImageQuality>,
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
 pub struct ImagesQuery {
     limit: Option<u32>,
@@ -57,12 +56,17 @@ pub struct ImagesQuery {
     quality: Option<ImageQuality>,
 }
 
-#[derive(Deserialize, Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema, AsChangeset, PartialEq, Eq)]
+#[diesel(table_name = crate::schema::user_images)]
 pub struct ImagePatch {
-    name: Option<String>,
+    caption: Option<String>,
     tags: Option<Vec<String>>,
-    shared_with: Option<Vec<String>>,
 }
+
+const EMPTY_IMAGE_PATCH: ImagePatch = ImagePatch {
+    caption: None,
+    tags: None,
+};
 
 #[derive(ToSchema)]
 pub struct ImagePayload {
@@ -70,14 +74,15 @@ pub struct ImagePayload {
     image: Binary,
 }
 
-#[derive(Deserialize, Serialize, ToSchema)]
+#[derive(Deserialize, Serialize, ToSchema, Queryable)]
 pub struct ImageMetaData {
     id: Uuid,
     owner_id: Uuid,
     caption: String,
+    #[diesel(deserialize_as = crate::database::VecOfNonNull<String>)]
     tags: Vec<String>,
+    #[diesel(deserialize_as = crate::database::VecOfNonNull<String>)]
     shared_with: Vec<String>,
-    url: String,
 }
 
 #[derive(Deserialize, Serialize, ToSchema)]
@@ -211,8 +216,6 @@ pub async fn get_image(
 ///
 /// This method returns the metadata of the images not the effective images. The client must make a request for each image independently.
 /// The list can be filtered by quality, and paginated.
-#[allow(unused_variables)]
-#[allow(unreachable_code)]
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
@@ -257,7 +260,7 @@ pub async fn get_image(
             content_type = "application/json"
         ),
     ),
-    tag="images",
+    tag = "images",
     security(
         ("JWT Access Token" = [])
     )
@@ -266,9 +269,58 @@ pub async fn get_image(
 pub async fn get_images(
     auth: AuthContext,
     query: web::Query<ImagesQuery>,
+    app_cfg: web::Data<AppConfiguration>,
+    db: web::Data<Database>,
 ) -> Result<impl Responder, ActixError> {
-    todo!("Implement get_images method.");
-    Ok(web::Json(ImagesMetaData { images: vec![] }))
+    let limit = query
+        .limit
+        .unwrap_or(app_cfg.images_query_default_limit)
+        .min(app_cfg.images_query_max_limit);
+    let offset = query.offset.unwrap_or(0);
+    let _quality = query.quality.unwrap_or(ImageQuality::Medium); // FIXME: image quality is ignored for now
+
+    let images: Vec<ImageMetaData> = database::open(db, move |conn| {
+        use crate::schema::{album_images, shared_albums, user_images, users};
+        use diesel::prelude::*;
+
+        // Corresponds to the following SQL:
+        /*
+            SELECT public.user_images.id,
+                   public.user_images.user_id    AS owner_id,
+                   public.user_images.caption,
+                   public.user_images.tags,
+            array_agg(public.users.email) AS shared_with
+            FROM public.user_images
+                     LEFT JOIN public.album_images ON user_images.id = album_images.image_id
+                     LEFT JOIN public.shared_albums ON shared_albums.album_id = album_images.album_id
+                     LEFT JOIN public.users ON shared_albums.user_id = users.id
+            WHERE public.user_images.user_id = {auth.user_id}
+            GROUP BY user_images.id
+            LIMIT {limit} OFFSET {offset};
+        */
+        user_images::table
+            .left_outer_join(album_images::table)
+            .left_outer_join(
+                shared_albums::table.on(album_images::album_id.eq(shared_albums::album_id)),
+            )
+            .left_outer_join(users::table.on(shared_albums::user_id.eq(users::id)))
+            .group_by(user_images::id)
+            .select((
+                user_images::id,
+                user_images::user_id,
+                user_images::caption,
+                user_images::tags,
+                crate::database::array_agg(users::email.nullable()),
+            ))
+            .filter(user_images::user_id.eq(auth.user_id))
+            .limit(limit as i64)
+            .offset(offset as i64)
+            .load::<ImageMetaData>(conn)
+            .map_err(SimpleDatabaseError::from)
+    })
+    .await?;
+
+    Ok(web::Json(ImagesMetaData { images }))
 }
 
 /// Upload an image
@@ -434,7 +486,8 @@ pub async fn upload_image(
             .map_err(DatabaseError::<ApiError>::from)?;
         Ok((user_image_id, need_storage))
     })
-    .await?;
+    .await
+    .map_err(ApiError::from)?;
 
     if need_storage {
         info!(hash = %decoded.hash(), %user_image_id, "compressing and storing image in storage");
@@ -454,8 +507,6 @@ pub async fn upload_image(
 }
 
 /// Set/modfiy image metadata, share/unshare, ...
-#[allow(unreachable_code)]
-#[allow(unused_variables)]
 #[utoipa::path(
     context_path = CONTEXT_PATH,
     params(
@@ -492,7 +543,7 @@ pub async fn upload_image(
             status = StatusCode::FORBIDDEN,
             description = "User has read only rights on the image (shared image)",
             body = ApiError,
-            example = json!(ApiError::forbidden_error()),
+            example = json!(ApiError::read_only()),
             content_type = "application/json"
         ),
         (
@@ -518,16 +569,80 @@ pub async fn edit_image(
     auth: AuthContext,
     img_id: web::Path<Uuid>,
     patch: web::Json<ImagePatch>,
-) -> impl Responder {
-    todo!("Implement edit_image method.");
-    HttpResponse::Ok().json(ImageMetaData {
-        id: img_id.into_inner(),
-        owner_id: Uuid::new_v4(),
-        caption: "my_image".to_string(),
-        tags: vec![],
-        shared_with: vec![],
-        url: "/images/1".to_string(),
+    db: web::Data<Database>,
+    app_cfg: web::Data<AppConfiguration>,
+) -> Result<HttpResponse, ApiError> {
+    let img_id = img_id.into_inner();
+    let mut patch = patch.into_inner();
+
+    if let Some(tags) = &mut patch.tags {
+        process_tags(tags, app_cfg.max_tags_per_resource);
+    }
+
+    let metadata: ImageMetaData = database::open(db, move |conn| {
+        use crate::schema::{album_images, shared_albums, user_images, users};
+        use diesel::prelude::*;
+
+        // Check if the user has read only rights on the image.
+        // This is the case if the image is shared with the user, but the user is not the owner.
+        let is_read_only: i64 = user_images::table
+            .inner_join(album_images::table)
+            .inner_join(shared_albums::table.on(album_images::album_id.eq(shared_albums::album_id)))
+            .filter(
+                user_images::id.eq(img_id).and(
+                    shared_albums::user_id
+                        .eq(auth.user_id)
+                        .and(user_images::user_id.ne(auth.user_id)),
+                ),
+            )
+            .count()
+            .get_result(conn)
+            .map_err(DatabaseError::<ApiError>::from)?;
+
+        if is_read_only > 0 {
+            return Err(DatabaseError::Custom(ApiError::read_only()));
+        }
+
+        // Updating nothing is not an error
+        if patch != EMPTY_IMAGE_PATCH {
+            diesel::update(user_images::table)
+                .set(patch)
+                .filter(
+                    user_images::id
+                        .eq(img_id)
+                        .and(user_images::user_id.eq(auth.user_id)),
+                )
+                .execute(conn)
+                .map_err(DatabaseError::<ApiError>::from)?;
+        }
+
+        // Fetch the full image metadata,
+        // see the comment in GET /images
+        user_images::table
+            .left_outer_join(album_images::table)
+            .left_outer_join(
+                shared_albums::table.on(album_images::album_id.eq(shared_albums::album_id)),
+            )
+            .left_outer_join(users::table.on(shared_albums::user_id.eq(users::id)))
+            .group_by(user_images::id)
+            .select((
+                user_images::id,
+                user_images::user_id,
+                user_images::caption,
+                user_images::tags,
+                crate::database::array_agg(users::email.nullable()),
+            ))
+            .filter(
+                user_images::id
+                    .eq(img_id)
+                    .and(user_images::user_id.eq(auth.user_id)),
+            )
+            .get_result::<ImageMetaData>(conn)
+            .map_err(DatabaseError::<ApiError>::from)
     })
+    .await?;
+
+    Ok(HttpResponse::Ok().json(metadata))
 }
 
 /// Delete an image

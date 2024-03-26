@@ -10,7 +10,8 @@ use ::r2d2::PooledConnection;
 use actix_web::{error::BlockingError, http::StatusCode, web, HttpResponse, ResponseError};
 use diesel::{
     r2d2::{self, ConnectionManager},
-    Connection, PgConnection,
+    result::Error as DieselError,
+    sql_function, Connection, PgConnection, Queryable,
 };
 use tracing::{debug, error, info};
 
@@ -26,7 +27,7 @@ pub struct Database {
 pub enum DatabaseError<E = Infallible> {
     R2d2(::r2d2::Error),
     Blocking(BlockingError),
-    Diesel(diesel::result::Error),
+    Diesel(DieselError),
     #[allow(dead_code)]
     Custom(E),
 }
@@ -161,6 +162,7 @@ impl<E: ResponseError> ResponseError for DatabaseError<E> {
     fn status_code(&self) -> StatusCode {
         match self {
             DatabaseError::Custom(err) => err.status_code(),
+            DatabaseError::Diesel(DieselError::NotFound) => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -168,6 +170,7 @@ impl<E: ResponseError> ResponseError for DatabaseError<E> {
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
         match self {
             DatabaseError::Custom(err) => err.error_response(),
+            DatabaseError::Diesel(DieselError::NotFound) => HttpResponse::NotFound().finish(),
             _ => HttpResponse::NotFound().finish(),
         }
     }
@@ -204,5 +207,36 @@ impl ToDatabasePointer for Arc<Database> {
 impl ToDatabasePointer for web::Data<Database> {
     fn to_database_ptr(&self) -> Arc<Database> {
         self.clone().into_inner()
+    }
+}
+
+sql_function! {
+    /// The `array_agg` SQL function.
+    /// <https://www.postgresql.org/docs/current/functions-aggregate.html#FUNCTIONS-AGGREGATE>
+    #[aggregate]
+    #[sql_name = "array_agg"]
+    fn array_agg<ST: diesel::sql_types::SingleValue + 'static>(expr: ST) -> diesel::sql_types::Array<ST>;
+}
+
+/// Automatically excludes `None`/`NULL` values from a `Vec<Option<T>>` when deserializing.
+#[repr(transparent)]
+pub struct VecOfNonNull<T>(pub Vec<T>);
+
+impl<T> From<VecOfNonNull<T>> for Vec<T> {
+    #[inline]
+    fn from(val: VecOfNonNull<T>) -> Self {
+        val.0
+    }
+}
+
+impl<ST, DB, T> Queryable<ST, DB> for VecOfNonNull<T>
+where
+    DB: diesel::backend::Backend,
+    Vec<Option<T>>: Queryable<ST, DB>,
+{
+    type Row = <Vec<Option<T>> as Queryable<ST, DB>>::Row;
+
+    fn build(row: Self::Row) -> diesel::deserialize::Result<Self> {
+        Vec::build(row).map(|vec| VecOfNonNull(vec.into_iter().flatten().collect()))
     }
 }
