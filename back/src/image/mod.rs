@@ -10,6 +10,8 @@ use image_backend::{
     codecs::{gif::GifDecoder, jpeg::JpegDecoder, png::PngDecoder},
     DynamicImage,
 };
+use jpegxl_rs::decode::decoder_builder;
+use jpegxl_rs::image::ToDynamic;
 use md5::{Digest, Md5};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
@@ -32,8 +34,17 @@ where
 
     tokio::task::spawn_blocking(move || {
         let hash = digest_image(&original_bytes);
-        let decoder = new_decoder(image_type, &original_bytes)?;
-        let inner = DynamicImage::from_decoder(decoder)?;
+        let inner: DynamicImage;
+
+        if image_type == ImageType::Jxl {
+            let decoder = decoder_builder().build()?;
+            inner = decoder
+                .decode_to_image(&original_bytes)?
+                .ok_or_else(|| anyhow::anyhow!("JXL image is not representable"))?;
+        } else {
+            let decoder = new_decoder(image_type, &original_bytes)?;
+            inner = DynamicImage::from_decoder(decoder)?;
+        }
 
         Ok(DecodedImage {
             inner,

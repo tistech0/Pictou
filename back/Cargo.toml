@@ -57,6 +57,7 @@ image-backend = { version = "~0.25.0", package = "image", default-features = fal
     "gif",
 ] }
 md-5 = "0.10.6"
+jpegxl-rs = { version = "~0.10.2", features=["image"] }
 
 [dev-dependencies]
 actix-rt = "^2.9.0"
