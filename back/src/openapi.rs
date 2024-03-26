@@ -37,7 +37,7 @@ impl Modify for SecuritySchemas {
                 [Flow::ClientCredentials(ClientCredentials::new(
                     app_cfg
                         .base_url
-                        .join("api/authorize/google")
+                        .join("api/auth/login/google")
                         .expect("Failed to build Google authorization URL"),
                     Scopes::default(),
                 ))],
@@ -52,7 +52,7 @@ impl Modify for SecuritySchemas {
                     .scheme(HttpAuthScheme::Bearer)
                     .bearer_format("JWT")
                     .description(Some(
-                        "Bearer token for JWT access, retrieved from /auth/[provider]/authorize",
+                        "Bearer token for JWT access, retrieved from /auth/login/[provider]",
                     ))
                     .build(),
             ),
