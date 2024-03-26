@@ -8,12 +8,14 @@ use actix_web::{
     HttpResponse, HttpResponseBuilder, Result as ActixResult,
 };
 use actix_web::{HttpRequest, ResponseError};
+use diesel::result::Error as DieselError;
 use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
 use std::str::from_utf8;
 use utoipa::ToSchema;
 
 use crate::auth::error::AuthError;
+use crate::database::DatabaseError;
 use crate::image::ImageType;
 
 #[derive(Clone, Copy, Deserialize, Serialize, Debug, ToSchema)]
@@ -152,6 +154,20 @@ impl ApiError {
             ApiErrorCode::InvalidEncoding,
             description,
         )
+    }
+}
+
+impl From<DatabaseError<ApiError>> for ApiError {
+    fn from(e: DatabaseError<ApiError>) -> Self {
+        match e {
+            DatabaseError::Custom(e) => e,
+            DatabaseError::Diesel(DieselError::NotFound) => ApiError::not_found_error("Resource"),
+            _ => ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorCode::Unknown,
+                "An error occurred",
+            ),
+        }
     }
 }
 
