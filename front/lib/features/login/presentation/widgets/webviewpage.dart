@@ -6,7 +6,7 @@ class WebViewPage extends StatefulWidget {
   const WebViewPage({super.key});
 
   @override
-  State<WebViewPage> createState() => _WebViewPageState();
+  _WebViewPageState createState() => _WebViewPageState();
 }
 
 class _WebViewPageState extends State<WebViewPage> {
@@ -15,32 +15,57 @@ class _WebViewPageState extends State<WebViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Google Auth'),
-      ),
-      body: WebView(
-        initialUrl: 'http://localhost:8000/api/auth/login/google',
-        javascriptMode: JavascriptMode.unrestricted,
-        userAgent: 'random',
-        onWebViewCreated: (WebViewController webViewController) {
-          _controller = webViewController;
-        },
-        onPageFinished: (String url) async {
-          //if url == callback google
-          if (url
-              .startsWith('http://localhost:8000/api/auth/callback/google')) {
-            final String bodyHtml = await _controller
-                .runJavascriptReturningResult('document.body.innerHTML;');
-            //print 'token' on body response
-
-            print(bodyHtml);
-            //pop on homepage
-            Navigator.of(context).pop(
-              MaterialPageRoute(builder: (context) => const HomePage()),
-            );
-          }
-        },
-      ),
+      appBar: AppBar(title: const Text('Google Auth')),
+      body: _buildWebView(),
     );
+  }
+
+  Widget _buildWebView() {
+    return WebView(
+      initialUrl: 'http://localhost:8000/api/auth/login/google',
+      javascriptMode: JavascriptMode.unrestricted,
+      userAgent: 'random',
+      onWebViewCreated: _onWebViewCreated,
+      onPageFinished: _onPageFinished,
+    );
+  }
+
+  void _onWebViewCreated(WebViewController webViewController) {
+    _controller = webViewController;
+  }
+
+  Future<void> _onPageFinished(String url) async {
+    if (url.startsWith('http://localhost:8000/api/auth/callback/google')) {
+      final bodyHtml = await _controller
+          .runJavascriptReturningResult('document.body.innerText;');
+      _parseAndPrintUserDetails(bodyHtml);
+      _navigateToHomePage(context);
+    }
+  }
+
+  void _parseAndPrintUserDetails(String bodyHtml) {
+    final userDetails = _extractUserDetailsFromHtml(bodyHtml);
+    userDetails.forEach((key, value) => print('$key: $value'));
+  }
+
+  Map<String, dynamic> _extractUserDetailsFromHtml(String bodyHtml) {
+    final Map<String, RegExp> patterns = {
+      'User ID': RegExp(r'"user_id":\s*"(.*?)"'),
+      'Email': RegExp(r'"email":\s*"(.*?)"'),
+      'Refresh Token': RegExp(r'"refresh_token":\s*"(.*?)"'),
+      'Refresh Token Exp': RegExp(r'"refresh_token_exp":\s*"(.*?)"'),
+      'Name': RegExp(r'"name":\s*"(.*?)"'),
+      'Given Name': RegExp(r'"given_name":\s*"(.*?)"'),
+      'Access Token': RegExp(r'"access_token":\s*"(.*?)"'),
+      'Access Token Exp': RegExp(r'"access_token_exp":\s*"(.*?)"'),
+    };
+
+    return patterns.map((key, value) =>
+        MapEntry(key, value.firstMatch(bodyHtml)?.group(1) ?? 'Not Found'));
+  }
+
+  void _navigateToHomePage(BuildContext context) {
+    Navigator.of(context)
+        .pop(MaterialPageRoute(builder: (context) => const HomePage()));
   }
 }
