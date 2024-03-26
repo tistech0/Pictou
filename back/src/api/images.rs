@@ -494,11 +494,18 @@ pub async fn upload_image(
 
         // TODO: it would be wise to do these operations in a separate thread in order to not block
         // the client
-        let mut output = storage
+        let mut original_output = storage
             .store(decoded.hash(), StoredImageKind::Original)
             .await?;
         let mut to_write_buf = Cursor::new(decoded.original_bytes());
-        output.write_all_buf(&mut to_write_buf).await?;
+        original_output.write_all_buf(&mut to_write_buf).await?;
+
+        let mut compressed_output = storage
+            .store(decoded.hash(), StoredImageKind::CompressedJpegXl)
+            .await?;
+        let buffer = decoded.compress_jxl().map_err(ApiError::invalid_encoding)?;
+        let mut to_write_buf = Cursor::new(buffer.data);
+        compressed_output.write_all_buf(&mut to_write_buf).await?;
     }
 
     info!(hash = %decoded.hash(), %user_image_id, "image upload complete");
