@@ -32,6 +32,7 @@ pub enum ApiErrorCode {
     ImagePayloadTooLarge,
     UnsupportedImageType,
     InvalidEncoding,
+    ReadOnly,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -153,6 +154,14 @@ impl ApiError {
             StatusCode::BAD_REQUEST,
             ApiErrorCode::InvalidEncoding,
             description,
+        )
+    }
+
+    pub fn read_only() -> Self {
+        ApiError::new(
+            StatusCode::FORBIDDEN,
+            ApiErrorCode::ReadOnly,
+            "This resource is read-only for the current user",
         )
     }
 }
