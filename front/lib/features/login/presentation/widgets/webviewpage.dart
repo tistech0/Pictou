@@ -6,7 +6,7 @@ class WebViewPage extends StatefulWidget {
   const WebViewPage({super.key});
 
   @override
-  _WebViewPageState createState() => _WebViewPageState();
+  State<WebViewPage> createState() => _WebViewPageState();
 }
 
 class _WebViewPageState extends State<WebViewPage> {
@@ -16,31 +16,27 @@ class _WebViewPageState extends State<WebViewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Google Auth')),
-      body: _buildWebView(),
+      body: WebView(
+        initialUrl: 'http://localhost:8000/api/auth/login/google',
+        javascriptMode: JavascriptMode.unrestricted,
+        userAgent: 'random',
+        onWebViewCreated: (WebViewController webViewController) {
+          _controller = webViewController;
+        },
+        onPageFinished: (String url) async {
+          if (url
+              .startsWith('http://localhost:8000/api/auth/callback/google')) {
+            final bodyHtml = await _controller
+                .runJavascriptReturningResult('document.body.innerText;');
+            _parseAndPrintUserDetails(bodyHtml);
+            if (mounted) {
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (context) => const HomePage()));
+            }
+          }
+        },
+      ),
     );
-  }
-
-  Widget _buildWebView() {
-    return WebView(
-      initialUrl: 'http://localhost:8000/api/auth/login/google',
-      javascriptMode: JavascriptMode.unrestricted,
-      userAgent: 'random',
-      onWebViewCreated: _onWebViewCreated,
-      onPageFinished: _onPageFinished,
-    );
-  }
-
-  void _onWebViewCreated(WebViewController webViewController) {
-    _controller = webViewController;
-  }
-
-  Future<void> _onPageFinished(String url) async {
-    if (url.startsWith('http://localhost:8000/api/auth/callback/google')) {
-      final bodyHtml = await _controller
-          .runJavascriptReturningResult('document.body.innerText;');
-      _parseAndPrintUserDetails(bodyHtml);
-      _navigateToHomePage(context);
-    }
   }
 
   void _parseAndPrintUserDetails(String bodyHtml) {
@@ -62,10 +58,5 @@ class _WebViewPageState extends State<WebViewPage> {
 
     return patterns.map((key, value) =>
         MapEntry(key, value.firstMatch(bodyHtml)?.group(1) ?? 'Not Found'));
-  }
-
-  void _navigateToHomePage(BuildContext context) {
-    Navigator.of(context)
-        .pop(MaterialPageRoute(builder: (context) => const HomePage()));
   }
 }
