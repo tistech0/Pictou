@@ -85,3 +85,13 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(web::scope("/albums").configure(albums::configure))
         .service(web::scope("/users").configure(users::configure));
 }
+
+/// Processes a tag list.
+/// * Truncates the list to the maximum tag count.
+/// * Sorts the list.
+/// * Removes duplicates.
+fn process_tags(tags: &mut Vec<String>, max_tag_count: u32) {
+    tags.truncate(max_tag_count as usize);
+    tags.sort_unstable();
+    tags.dedup();
+}
