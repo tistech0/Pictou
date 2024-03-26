@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
+import 'package:front/core/config/userprovider.dart';
 import 'package:front/features/home/presentation/screens/homepage.screen.dart';
 import 'package:front/features/login/presentation/screens/login.screen.dart';
 import 'package:front/features/settings/presentation/screens/setting.screen.dart';
@@ -22,6 +23,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AlbumProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
       child: Consumer<ThemeProvider>(
         // Use Consumer to access ThemeProvider

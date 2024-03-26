@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:front/core/config/userprovider.dart';
 import 'package:front/features/home/presentation/screens/homepage.screen.dart';
+import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:front/core/domain/entities/user.entity.dart';
 
 class WebViewPage extends StatefulWidget {
   const WebViewPage({super.key});
@@ -15,7 +18,6 @@ class _WebViewPageState extends State<WebViewPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Google Auth')),
       body: WebView(
         initialUrl: 'http://localhost:8000/api/auth/login/google',
         javascriptMode: JavascriptMode.unrestricted,
@@ -29,6 +31,29 @@ class _WebViewPageState extends State<WebViewPage> {
             final bodyHtml = await _controller
                 .runJavascriptReturningResult('document.body.innerText;');
             _parseAndPrintUserDetails(bodyHtml);
+            final connectedUser = UserEntity(
+              userId:
+                  _extractUserDetailsFromHtml(bodyHtml)['User ID'] as String,
+              email: _extractUserDetailsFromHtml(bodyHtml)['Email'] as String,
+              refreshToken:
+                  _extractUserDetailsFromHtml(bodyHtml)['Refresh Token']
+                      as String,
+              refreshTokenExp:
+                  _extractUserDetailsFromHtml(bodyHtml)['Refresh Token Exp']
+                      as String,
+              name: _extractUserDetailsFromHtml(bodyHtml)['Name'] as String,
+              givenName:
+                  _extractUserDetailsFromHtml(bodyHtml)['Given Name'] as String,
+              accessToken: _extractUserDetailsFromHtml(bodyHtml)['Access Token']
+                  as String,
+              accessTokenExp:
+                  _extractUserDetailsFromHtml(bodyHtml)['Access Token Exp']
+                      as String,
+            );
+
+            Provider.of<UserProvider>(context, listen: false)
+                .setUser(connectedUser);
+
             if (mounted) {
               Navigator.pushReplacement(context,
                   MaterialPageRoute(builder: (context) => const HomePage()));
