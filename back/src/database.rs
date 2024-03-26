@@ -10,6 +10,7 @@ use ::r2d2::PooledConnection;
 use actix_web::{error::BlockingError, http::StatusCode, web, HttpResponse, ResponseError};
 use diesel::{
     r2d2::{self, ConnectionManager},
+    result::Error as DieselError,
     sql_function, Connection, PgConnection, Queryable,
 };
 use tracing::{debug, error, info};
@@ -26,7 +27,7 @@ pub struct Database {
 pub enum DatabaseError<E = Infallible> {
     R2d2(::r2d2::Error),
     Blocking(BlockingError),
-    Diesel(diesel::result::Error),
+    Diesel(DieselError),
     #[allow(dead_code)]
     Custom(E),
 }
@@ -161,6 +162,7 @@ impl<E: ResponseError> ResponseError for DatabaseError<E> {
     fn status_code(&self) -> StatusCode {
         match self {
             DatabaseError::Custom(err) => err.status_code(),
+            DatabaseError::Diesel(DieselError::NotFound) => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -168,6 +170,7 @@ impl<E: ResponseError> ResponseError for DatabaseError<E> {
     fn error_response(&self) -> HttpResponse<actix_web::body::BoxBody> {
         match self {
             DatabaseError::Custom(err) => err.error_response(),
+            DatabaseError::Diesel(DieselError::NotFound) => HttpResponse::NotFound().finish(),
             _ => HttpResponse::NotFound().finish(),
         }
     }

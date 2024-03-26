@@ -482,7 +482,8 @@ pub async fn upload_image(
             .map_err(DatabaseError::<ApiError>::from)?;
         Ok((user_image_id, need_storage))
     })
-    .await?;
+    .await
+    .map_err(ApiError::from)?;
 
     if need_storage {
         info!(hash = %decoded.hash(), %user_image_id, "compressing and storing image in storage");
