@@ -5,11 +5,10 @@ use crate::api::{
 };
 use crate::api::{json_payload_error_example, PaginationQuery};
 use crate::auth::AuthContext;
-use crate::database;
-use crate::database::{Database, SimpleDatabaseError};
+use crate::database::{self, Database, DatabaseError, SimpleDatabaseError};
 use crate::error_handler::ApiError;
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder, Result as ActixResult};
-use diesel::Insertable;
+use diesel::{AsChangeset, Insertable};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 use utoipa::ToSchema;
@@ -22,6 +21,18 @@ pub struct AlbumPost {
     name: String,
     tags: Vec<String>,
 }
+
+#[derive(Deserialize, Serialize, ToSchema, AsChangeset, PartialEq, Eq)]
+#[diesel(table_name = crate::schema::albums)]
+pub struct AlbumPatch {
+    name: Option<String>,
+    tags: Option<Vec<String>>,
+}
+
+const EMPTY_ALBUM_PATCH: AlbumPatch = AlbumPatch {
+    name: None,
+    tags: None,
+};
 
 #[derive(Deserialize, Serialize, ToSchema)]
 pub struct Album {
@@ -68,7 +79,7 @@ struct NewAlbum {
 #[get("/{id}")]
 pub async fn get_album(
     auth: AuthContext,
-    album_uuid: web::Path<Uuid>,
+    album_id: web::Path<Uuid>,
     db: web::Data<Database>,
 ) -> ActixResult<HttpResponse> {
     // Corresponds to the following SQL:
@@ -100,7 +111,7 @@ pub async fn get_album(
         // Get the album meta data
         let (id, owner_id, name, tags): (Uuid, Uuid, String, Vec<Option<String>>) = albums::table
             .select((albums::id, albums::owner_id, albums::name, albums::tags))
-            .filter(albums::id.eq(album_uuid.clone()))
+            .filter(albums::id.eq(album_id.clone()))
             .get_result(conn)
             .optional()
             .map_err(SimpleDatabaseError::from)?
@@ -110,11 +121,11 @@ pub async fn get_album(
         let shared_with = users::table
             .inner_join(shared_albums::table.on(shared_albums::user_id.eq(users::id)))
             .select(users::email)
-            .filter(shared_albums::album_id.eq(album_uuid.clone()))
+            .filter(shared_albums::album_id.eq(album_id.clone()))
             .load::<String>(conn)
             .map_err(SimpleDatabaseError::from)?;
 
-        // Get the list of images in the album
+        // Get the list of images on the album
         let images = user_images::table
             .left_outer_join(album_images::table)
             .left_outer_join(
@@ -129,7 +140,7 @@ pub async fn get_album(
                 user_images::tags,
                 crate::database::array_agg(users::email.nullable()),
             ))
-            .filter(album_images::album_id.eq(album_uuid.clone()))
+            .filter(album_images::album_id.eq(album_id.clone()))
             .load::<ImageMetaData>(conn)
             .map_err(SimpleDatabaseError::from)?;
 
@@ -257,7 +268,7 @@ pub async fn create_album(
     request_body(
         description = "Album to edit",
         content_type = "application/json",
-        content = AlbumPost
+        content = AlbumPatch
     ),
     security(
         ("JWT Access Token" = [])
@@ -267,17 +278,80 @@ pub async fn create_album(
 pub async fn edit_album(
     auth: AuthContext,
     album_id: web::Path<Uuid>,
-    patch: web::Json<AlbumPost>,
-) -> impl Responder {
-    todo!("Implement edit_album method.");
-    HttpResponse::Ok().json(Album {
-        id: album_id.into_inner(),
-        owner_id: Uuid::new_v4(),
-        name: "My Album".to_string(),
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-        shared_with: vec!["user1".to_string()],
-        images: vec![],
+    patch: web::Json<AlbumPatch>,
+    db: web::Data<Database>,
+) -> ActixResult<HttpResponse, ApiError> {
+    let patch = patch.into_inner();
+
+    let edited_album = database::open(db, move |conn| {
+        use crate::schema::{album_images, albums, shared_albums, user_images, users};
+        use diesel::prelude::*;
+
+        //Get the owner of the album
+        let owner_id = albums::table
+            .select(albums::owner_id)
+            .filter(albums::id.eq(album_id.clone()))
+            .get_result::<Uuid>(conn)
+            .map_err(DatabaseError::<ApiError>::from)?;
+        //Check if the user is the owner of the album
+        if owner_id != auth.user_id {
+            return Err(DatabaseError::Custom(ApiError::read_only()));
+        }
+
+        if patch != EMPTY_ALBUM_PATCH {
+            diesel::update(albums::table)
+                .filter(albums::id.eq(album_id.clone()))
+                .set(patch)
+                .execute(conn)
+                .map_err(DatabaseError::<ApiError>::from)?;
+        }
+
+        // Fetch the album
+        // see the comment int GET /album
+        let (id, owner_id, name, tags): (Uuid, Uuid, String, Vec<Option<String>>) = albums::table
+            .select((albums::id, albums::owner_id, albums::name, albums::tags))
+            .filter(albums::id.eq(album_id.clone()))
+            .get_result(conn)
+            .optional()
+            .map_err(DatabaseError::<ApiError>::from)?
+            .expect("Album not found");
+        let shared_with = users::table
+            .inner_join(shared_albums::table.on(shared_albums::user_id.eq(users::id)))
+            .select(users::email)
+            .filter(shared_albums::album_id.eq(album_id.clone()))
+            .load::<String>(conn)
+            .map_err(DatabaseError::<ApiError>::from)?;
+        let images = user_images::table
+            .left_outer_join(album_images::table)
+            .left_outer_join(
+                shared_albums::table.on(album_images::album_id.eq(shared_albums::album_id)),
+            )
+            .left_outer_join(users::table.on(shared_albums::user_id.eq(users::id)))
+            .group_by(user_images::id)
+            .select((
+                user_images::id,
+                user_images::user_id,
+                user_images::caption,
+                user_images::tags,
+                crate::database::array_agg(users::email.nullable()),
+            ))
+            .filter(album_images::album_id.eq(album_id.clone()))
+            .load::<ImageMetaData>(conn)
+            .map_err(DatabaseError::<ApiError>::from)?;
+
+        // Create the album object
+        let album = Album {
+            id,
+            owner_id,
+            name,
+            tags: tags.into_iter().filter_map(|t| t).collect(),
+            shared_with,
+            images,
+        };
+        Ok(album)
     })
+    .await?;
+    Ok(HttpResponse::Ok().json(edited_album))
 }
 
 /// Delete an album
@@ -301,9 +375,22 @@ pub async fn edit_album(
     )
 )]
 #[delete("/{id}")]
-pub async fn delete_album(auth: AuthContext, album_id: web::Path<Uuid>) -> impl Responder {
-    todo!("Implement delete_album method.");
-    HttpResponse::NoContent().finish()
+pub async fn delete_album(
+    auth: AuthContext,
+    album_id: web::Path<Uuid>,
+    db: web::Data<Database>,
+) -> ActixResult<HttpResponse> {
+    database::open(db, move |conn| {
+        use crate::schema::albums;
+        use diesel::prelude::*;
+
+        diesel::delete(albums::table.filter(albums::id.eq(album_id.clone())))
+            .execute(conn)
+            .map_err(SimpleDatabaseError::from)?;
+        Ok(())
+    })
+    .await;
+    Ok(HttpResponse::NoContent().finish())
 }
 
 /// Add an image to an album
