@@ -118,7 +118,7 @@ pub async fn get_album(
         // Get the album meta data
         let (id, owner_id, name, tags): (Uuid, Uuid, String, Vec<Option<String>>) = albums::table
             .select((albums::id, albums::owner_id, albums::name, albums::tags))
-            .filter(albums::id.eq(album_id.clone()))
+            .filter(albums::id.eq(*album_id))
             .get_result(conn)
             .optional()
             .map_err(SimpleDatabaseError::from)?
@@ -128,7 +128,7 @@ pub async fn get_album(
         let shared_with = users::table
             .inner_join(shared_albums::table.on(shared_albums::user_id.eq(users::id)))
             .select(users::email)
-            .filter(shared_albums::album_id.eq(album_id.clone()))
+            .filter(shared_albums::album_id.eq(*album_id))
             .load::<String>(conn)
             .map_err(SimpleDatabaseError::from)?;
 
@@ -147,7 +147,7 @@ pub async fn get_album(
                 user_images::tags,
                 crate::database::array_agg(users::email.nullable()),
             ))
-            .filter(album_images::album_id.eq(album_id.clone()))
+            .filter(album_images::album_id.eq(*album_id))
             .load::<ImageMetaData>(conn)
             .map_err(SimpleDatabaseError::from)?;
 
@@ -156,7 +156,7 @@ pub async fn get_album(
             id,
             owner_id,
             name,
-            tags: tags.into_iter().filter_map(|t| t).collect(),
+            tags: tags.into_iter().flatten().collect(),
             shared_with,
             images,
         };
@@ -223,7 +223,7 @@ pub async fn get_albums(
                 id,
                 owner_id,
                 name,
-                tags: tags.into_iter().filter_map(|t| t).collect(),
+                tags: tags.into_iter().flatten().collect(),
                 shared_with: vec![],
                 images: vec![],
             })
@@ -281,7 +281,7 @@ pub async fn create_album(
             id,
             owner_id,
             name,
-            tags: tags.into_iter().filter_map(|t| t).collect(),
+            tags: tags.into_iter().flatten().collect(),
             shared_with: vec![],
             images: vec![],
         };
@@ -341,7 +341,7 @@ pub async fn edit_album(
         //Get the owner of the album
         let owner_id = albums::table
             .select(albums::owner_id)
-            .filter(albums::id.eq(album_id.clone()))
+            .filter(albums::id.eq(*album_id))
             .get_result::<Uuid>(conn)
             .map_err(DatabaseError::<ApiError>::from)?;
         //Check if the user is the owner of the album
@@ -351,7 +351,7 @@ pub async fn edit_album(
 
         if patch != EMPTY_ALBUM_PATCH {
             diesel::update(albums::table)
-                .filter(albums::id.eq(album_id.clone()))
+                .filter(albums::id.eq(*album_id))
                 .set(patch)
                 .execute(conn)
                 .map_err(DatabaseError::<ApiError>::from)?;
@@ -361,7 +361,7 @@ pub async fn edit_album(
         // see the comment int GET /album
         let (id, owner_id, name, tags): (Uuid, Uuid, String, Vec<Option<String>>) = albums::table
             .select((albums::id, albums::owner_id, albums::name, albums::tags))
-            .filter(albums::id.eq(album_id.clone()))
+            .filter(albums::id.eq(*album_id))
             .get_result(conn)
             .optional()
             .map_err(DatabaseError::<ApiError>::from)?
@@ -369,7 +369,7 @@ pub async fn edit_album(
         let shared_with = users::table
             .inner_join(shared_albums::table.on(shared_albums::user_id.eq(users::id)))
             .select(users::email)
-            .filter(shared_albums::album_id.eq(album_id.clone()))
+            .filter(shared_albums::album_id.eq(*album_id))
             .load::<String>(conn)
             .map_err(DatabaseError::<ApiError>::from)?;
         let images = user_images::table
@@ -386,7 +386,7 @@ pub async fn edit_album(
                 user_images::tags,
                 crate::database::array_agg(users::email.nullable()),
             ))
-            .filter(album_images::album_id.eq(album_id.clone()))
+            .filter(album_images::album_id.eq(*album_id))
             .load::<ImageMetaData>(conn)
             .map_err(DatabaseError::<ApiError>::from)?;
 
@@ -395,7 +395,7 @@ pub async fn edit_album(
             id,
             owner_id,
             name,
-            tags: tags.into_iter().filter_map(|t| t).collect(),
+            tags: tags.into_iter().flatten().collect(),
             shared_with,
             images,
         };
@@ -435,7 +435,7 @@ pub async fn delete_album(
         use crate::schema::albums;
         use diesel::prelude::*;
 
-        diesel::delete(albums::table.filter(albums::id.eq(album_id.clone())))
+        diesel::delete(albums::table.filter(albums::id.eq(*album_id)))
             .execute(conn)
             .map_err(SimpleDatabaseError::from)?;
         Ok(())
@@ -545,7 +545,7 @@ pub async fn add_image_to_album(
             id,
             owner_id,
             name,
-            tags: tags.into_iter().filter_map(|t| t).collect(),
+            tags: tags.into_iter().flatten().collect(),
             shared_with,
             images,
         };
@@ -659,7 +659,7 @@ pub async fn remove_image_from_album(
             id,
             owner_id,
             name,
-            tags: tags.into_iter().filter_map(|t| t).collect(),
+            tags: tags.into_iter().flatten().collect(),
             shared_with,
             images,
         };
