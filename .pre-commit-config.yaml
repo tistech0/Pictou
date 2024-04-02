@@ -39,3 +39,11 @@ repos:
         files: ^back/
         language: system
         types: [ rust ]
+
+      - id: format-flutter-files
+        name: format flutter files
+        entry: flutter
+        args: [format]
+        files: \.dart$
+        language: system
+        types: [dart]
