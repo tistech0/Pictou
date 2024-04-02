@@ -1,43 +1,34 @@
 class UserEntity {
-  final String userId;
-  final String email;
-  String accessToken;
-  final String accessTokenExp;
-  final String refreshToken;
-  final String refreshTokenExp;
-  final String name;
-  final String givenName;
+  final String? userId;
+  final String? email;
+  late final String? accessToken;
+  final String? accessTokenExp;
+  final String? refreshToken;
+  final String? refreshTokenExp;
+  final String? name;
+  final String? givenName;
 
   UserEntity({
     required this.userId,
-    required this.email,
-    required this.accessToken,
-    required this.accessTokenExp,
-    required this.refreshToken,
-    required this.refreshTokenExp,
-    required this.name,
-    required this.givenName,
+    this.email,
+    this.accessToken,
+    this.accessTokenExp,
+    this.refreshToken,
+    this.refreshTokenExp,
+    this.name,
+    this.givenName,
   });
 
-  UserEntity copyWith({
-    String? userId,
-    String? email,
-    String? accessToken,
-    String? accessTokenExp,
-    String? refreshToken,
-    String? refreshTokenExp,
-    String? name,
-    String? givenName,
-  }) {
+  factory UserEntity.fromJson(Map<String, dynamic> json) {
     return UserEntity(
-      userId: userId ?? this.userId,
-      email: email ?? this.email,
-      accessToken: accessToken ?? this.accessToken,
-      accessTokenExp: accessTokenExp ?? this.accessTokenExp,
-      refreshToken: refreshToken ?? this.refreshToken,
-      refreshTokenExp: refreshTokenExp ?? this.refreshTokenExp,
-      name: name ?? this.name,
-      givenName: givenName ?? this.givenName,
+      userId: json['user_id'] as String?,
+      email: json['email'] as String?,
+      accessToken: json['access_token'] as String?,
+      accessTokenExp: json['access_token_exp'] as String?,
+      refreshToken: json['refresh_token'] as String?,
+      refreshTokenExp: json['refresh_token_exp'] as String?,
+      name: json['name'] as String?,
+      givenName: json['given_name'] as String?,
     );
   }
 }

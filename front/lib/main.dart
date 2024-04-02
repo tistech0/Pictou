@@ -23,7 +23,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AlbumProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(
+          create: (_) => UserProvider(null),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         // Use Consumer to access ThemeProvider
