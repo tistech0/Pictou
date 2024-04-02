@@ -1,10 +1,11 @@
 use crate::api::images::ImageMetaData;
+use crate::api::json_payload_error_example;
 use crate::api::{
     album_not_found_example, json_payload_error_example_missing_field, path_error_example,
-    query_payload_error_example,
+    process_tags, query_payload_error_example,
 };
-use crate::api::{json_payload_error_example, PaginationQuery};
 use crate::auth::AuthContext;
+use crate::config::AppConfiguration;
 use crate::database::{self, Database, DatabaseError, SimpleDatabaseError};
 use crate::error_handler::ApiError;
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder, Result as ActixResult};
@@ -55,6 +56,12 @@ struct NewAlbum {
     owner_id: Uuid,
     name: String,
     tags: Vec<String>,
+}
+
+#[derive(Deserialize)]
+pub struct AlbumsQuery {
+    limit: Option<u32>,
+    offset: Option<u32>,
 }
 
 /// Get an album by its id.
@@ -181,11 +188,50 @@ pub async fn get_album(
 #[get("")]
 pub async fn get_albums(
     auth: AuthContext,
-    query: web::Query<PaginationQuery>,
+    query: web::Query<AlbumsQuery>,
+    app_cfg: web::Data<AppConfiguration>,
     db: web::Data<Database>,
 ) -> ActixResult<HttpResponse> {
-    todo!("Implement get_albums method.");
-    Ok(HttpResponse::Ok().json(AlbumList { albums: vec![] }))
+    let limit = query
+        .limit
+        .unwrap_or(app_cfg.albums_query_default_limit)
+        .min(app_cfg.albums_query_max_limit);
+    let offset = query.offset.unwrap_or(0);
+
+    let albums = database::open(db, move |conn| {
+        use crate::schema::{albums, shared_albums};
+        use diesel::prelude::*;
+
+        // Get the list of albums
+        let albums = albums::table
+            .select((albums::id, albums::owner_id, albums::name, albums::tags))
+            .left_join(shared_albums::table.on(shared_albums::user_id.eq(auth.user_id)))
+            .filter(
+                albums::owner_id
+                    .eq(auth.user_id)
+                    .or(shared_albums::user_id.eq(auth.user_id)),
+            )
+            .offset(offset as i64)
+            .limit(limit as i64)
+            .load::<(Uuid, Uuid, String, Vec<Option<String>>)>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        // Return the list of albums
+        Ok(albums
+            .into_iter()
+            .map(|(id, owner_id, name, tags)| Album {
+                id,
+                owner_id,
+                name,
+                tags: tags.into_iter().filter_map(|t| t).collect(),
+                shared_with: vec![],
+                images: vec![],
+            })
+            .collect::<Vec<Album>>())
+    })
+    .await?;
+
+    Ok(HttpResponse::Ok().json(AlbumList { albums }))
 }
 
 /// Create a new album
@@ -280,8 +326,13 @@ pub async fn edit_album(
     album_id: web::Path<Uuid>,
     patch: web::Json<AlbumPatch>,
     db: web::Data<Database>,
+    app_cfg: web::Data<AppConfiguration>,
 ) -> ActixResult<HttpResponse, ApiError> {
-    let patch = patch.into_inner();
+    let mut patch = patch.into_inner();
+
+    if let Some(tags) = &mut patch.tags {
+        process_tags(tags, app_cfg.max_tags_per_resource);
+    }
 
     let edited_album = database::open(db, move |conn| {
         use crate::schema::{album_images, albums, shared_albums, user_images, users};
@@ -389,7 +440,7 @@ pub async fn delete_album(
             .map_err(SimpleDatabaseError::from)?;
         Ok(())
     })
-    .await;
+    .await?;
     Ok(HttpResponse::NoContent().finish())
 }
 
