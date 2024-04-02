@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:front/core/domain/entities/user.entity.dart';
 
 class UserProvider with ChangeNotifier {
-  late final UserEntity _user;
+  UserEntity? _user;
 
-  UserProvider();
+  UserProvider(this._user);
 
-  UserEntity get user => _user;
+  UserEntity? get user => _user;
 
-  void updateUserAccessToken(String newAccessToken) {
-    _user.accessToken = newAccessToken;
+  void setUser(UserEntity user) {
+    _user = user;
     notifyListeners();
   }
 
-  void setUser(UserEntity newUser) {
-    _user = newUser;
+  void logout() {
+    _user = null;
     notifyListeners();
   }
 }
