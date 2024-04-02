@@ -39,9 +39,12 @@ dependencies:
   image_picker: ^1.0.7
   dio: ^4.0.0
   webview_flutter: ^3.0.0
+  openapi_generator_annotations: ^5.0.2
 
 
 dev_dependencies:
+  openapi_generator: ^5.0.2
+  analyzer: ^6.2.0
   flutter_test:
     sdk: flutter
 
