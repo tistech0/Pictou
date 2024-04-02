@@ -44,6 +44,6 @@ repos:
         name: format flutter files
         entry: flutter
         args: [format]
-        files: \.dart$
+        files: ^front/
         language: system
         types: [dart]
