@@ -15,6 +15,8 @@ cd PROJECT_DIR
 pre-commit install
 ```
 
+Install [libjxl 10.0.2](https://github.com/libjxl/libjxl/releases/tag/v0.10.2) and pkg-config on your system for the back.
+
 ### NixOS
 
 On NixOS, the dev environment will set itself up upon `cd`-ing into the directory.

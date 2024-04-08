@@ -27,6 +27,8 @@ pub struct AppConfiguration {
     pub max_image_size: usize,
     pub images_query_default_limit: u32,
     pub images_query_max_limit: u32,
+    pub albums_query_default_limit: u32,
+    pub albums_query_max_limit: u32,
     pub max_tags_per_resource: u32,
 }
 
@@ -66,11 +68,15 @@ impl AppConfiguration {
                 .map(oauth2::ClientSecret::new),
             refresh_token_lifetime: Duration::seconds(env::var("REFRESH_TOKEN_LIFETIME")?.parse()?),
             access_token_lifetime: Duration::seconds(env::var("ACCESS_TOKEN_LIFETIME")?.parse()?),
-            max_image_size: env::var("MAX_IMAGE_SIZE").map_or(Ok(10_000_000), |s| s.parse())?,
+            max_image_size: env::var("MAX_IMAGE_SIZE").map_or(Ok(20_000_000), |s| s.parse())?,
             images_query_default_limit: env::var("IMAGES_QUERY_DEFAULT_LIMIT")
                 .map_or(Ok(50), |s| s.parse())?,
             images_query_max_limit: env::var("IMAGES_QUERY_MAX_LIMIT")
                 .map_or(Ok(1024), |s| s.parse())?,
+            albums_query_default_limit: env::var("ALBUMS_QUERY_DEFAULT_LIMIT")
+                .map_or(Ok(25), |s| s.parse())?,
+            albums_query_max_limit: env::var("ALBUMS_QUERY_MAX_LIMIT")
+                .map_or(Ok(50), |s| s.parse())?,
             max_tags_per_resource: env::var("MAX_TAGS_PER_RESOURCE")
                 .map_or(Ok(32), |s| s.parse())?,
         })
@@ -94,9 +100,11 @@ impl Default for AppConfiguration {
             google_client_secret: Default::default(),
             refresh_token_lifetime: Duration::days(30),
             access_token_lifetime: Duration::minutes(3),
-            max_image_size: 10_000_000,
+            max_image_size: 20_000_000,
             images_query_default_limit: 50,
             images_query_max_limit: 1024,
+            albums_query_default_limit: 25,
+            albums_query_max_limit: 50,
             max_tags_per_resource: 32,
         }
     }
@@ -125,6 +133,11 @@ impl Debug for AppConfiguration {
                 &self.images_query_default_limit,
             )
             .field("images_query_max_limit", &self.images_query_max_limit)
+            .field(
+                "albums_query_default_limit",
+                &self.albums_query_default_limit,
+            )
+            .field("albums_query_max_limit", &self.albums_query_max_limit)
             .field("max_tags_per_resource", &self.max_tags_per_resource)
             .finish()
     }

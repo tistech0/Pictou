@@ -10,6 +10,10 @@ use image_backend::{
     codecs::{gif::GifDecoder, jpeg::JpegDecoder, png::PngDecoder},
     DynamicImage,
 };
+use jpegxl_rs::{
+    decode::decoder_builder, encode::encoder_builder, encode::EncoderSpeed, EncodeError,
+};
+use jpegxl_rs::{encode::EncoderResult, image::ToDynamic};
 use md5::{Digest, Md5};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
@@ -32,8 +36,18 @@ where
 
     tokio::task::spawn_blocking(move || {
         let hash = digest_image(&original_bytes);
-        let decoder = new_decoder(image_type, &original_bytes)?;
-        let inner = DynamicImage::from_decoder(decoder)?;
+        let inner: DynamicImage = match image_type {
+            ImageType::Jxl => {
+                let decoder = decoder_builder().build()?;
+                decoder
+                    .decode_to_image(&original_bytes)?
+                    .ok_or_else(|| anyhow::anyhow!("JXL image is not representable"))?
+            }
+            _ => {
+                let decoder = new_decoder(image_type, &original_bytes)?;
+                DynamicImage::from_decoder(decoder)?
+            }
+        };
 
         Ok(DecodedImage {
             inner,
@@ -93,6 +107,21 @@ pub struct DecodedImage {
 }
 
 impl DecodedImage {
+    pub fn compress_jxl(&self) -> Result<EncoderResult<u8>, EncodeError> {
+        let mut encoder = encoder_builder()
+            .lossless(false)
+            .speed(EncoderSpeed::Lightning)
+            .quality(1.0)
+            .use_container(false)
+            .init_buffer_size(self.size() as usize)
+            .build()?;
+        encoder.encode(
+            self.inner.as_bytes(),
+            self.inner.width(),
+            self.inner.height(),
+        )
+    }
+
     pub fn size(&self) -> i64 {
         self.original_bytes
             .len()

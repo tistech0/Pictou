@@ -38,6 +38,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install libjxl
+      run: |
+        sudo apt-get update
+        sudo apt install libtcmalloc-minimal4 libhwy-dev
+        curl -L -o package.tar.gz https://github.com/libjxl/libjxl/releases/download/v0.10.2/jxl-debs-amd64-ubuntu-22.04-v0.10.2.tar.gz
+        tar -xvf package.tar.gz
+        sudo dpkg -i libjxl_0.10.2_amd64.deb jxl_0.10.2_amd64.deb libjxl-dev_0.10.2_amd64.deb
+
+
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "back-ci"
@@ -50,6 +60,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+
+    - name: Install libjxl
+      run: |
+        sudo apt-get update
+        sudo apt install libtcmalloc-minimal4 libhwy-dev
+        curl -L -o package.tar.gz https://github.com/libjxl/libjxl/releases/download/v0.10.2/jxl-debs-amd64-ubuntu-22.04-v0.10.2.tar.gz
+        tar -xvf package.tar.gz
+        sudo dpkg -i libjxl_0.10.2_amd64.deb jxl_0.10.2_amd64.deb libjxl-dev_0.10.2_amd64.deb
+
     - uses: Swatinem/rust-cache@v2
       with:
         shared-key: "back-ci"
