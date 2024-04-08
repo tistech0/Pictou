@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  build_runner: ^2.1.4
   flutter:
     sdk: flutter
 
@@ -37,9 +38,11 @@ dependencies:
   cupertino_icons: ^1.0.2
   provider: ^6.0.0
   image_picker: ^1.0.7
-  dio: ^4.0.0
+  dio: ^5.4.2+1
   webview_flutter: ^3.0.0
   openapi_generator_annotations: ^5.0.2
+  pictouapi:
+    path: ./api
 
 
 dev_dependencies:

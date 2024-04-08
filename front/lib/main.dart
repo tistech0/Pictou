@@ -6,6 +6,7 @@ import 'package:front/features/login/presentation/screens/login.screen.dart';
 import 'package:front/features/settings/presentation/screens/setting.screen.dart';
 import 'package:front/features/viewpictures/presentation/screens/viewpictures.screen.dart';
 import 'package:front/core/config/themeprovider.dart';
+import 'package:pictouapi/pictouapi.dart';
 import 'package:provider/provider.dart';
 
 import 'features/_global/presentation/widgets/splashscreen.widget.dart';
@@ -21,7 +22,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AlbumProvider()),
+        ChangeNotifierProvider(create: (_) => AlbumProvider(Pictouapi())),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(
           create: (_) => UserProvider(null),
@@ -50,7 +51,7 @@ class MyApp extends StatelessWidget {
             themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
             routes: {
               '/': (context) => const SplashScreen(),
-              '/login': (context) => LoginScreen(),
+              '/login': (context) => const LoginScreen(),
               '/home': (context) => const HomePage(),
               '/view-picture': (context) => const ViewPictures(
                     albumId: '',
