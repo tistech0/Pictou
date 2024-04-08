@@ -420,7 +420,7 @@ pub async fn upload_image(
 
     let to_store = NewStoredImage {
         hash: decoded.hash(),
-        compression_alg: "none".to_owned(),
+        compression_alg: "jxl".to_owned(),
         size: decoded.size(),
         width: decoded.width(),
         height: decoded.height(),
