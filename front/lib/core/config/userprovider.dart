@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:front/core/domain/entities/user.entity.dart';
+import '../domain/entities/user.entity.dart';
 
 class UserProvider with ChangeNotifier {
   UserEntity? _user;

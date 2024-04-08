@@ -4,6 +4,7 @@
 
 import 'package:dio/dio.dart';
 import 'package:built_value/serializer.dart';
+import 'package:pictouapi/pictouapi.dart';
 import 'package:pictouapi/src/serializers.dart';
 import 'package:pictouapi/src/auth/api_key_auth.dart';
 import 'package:pictouapi/src/auth/basic_auth.dart';

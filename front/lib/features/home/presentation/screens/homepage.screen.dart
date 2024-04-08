@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:front/features/_global/presentation/widgets/app_bar.widget.dart';
 import 'package:front/features/home/presentation/widgets/refreshable_album_carousel.widget.dart';
+import 'package:front/core/config/albumprovider.dart';
+import 'package:front/core/config/userprovider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,15 +14,29 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAlbums());
+  }
+
+  void _loadAlbums() {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+    if (userProvider.user?.accessToken != null) {
+      albumProvider.fetchAlbums(userProvider.user!.accessToken!);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: CustomAppBar(),
+    return Scaffold(
+      appBar: const CustomAppBar(),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            children: const [
               Padding(
                 padding: EdgeInsets.only(bottom: 8.0),
                 child: Text(

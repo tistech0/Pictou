@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:front/features/_global/presentation/widgets/bottom_bar.widget.dart';
 import 'package:provider/provider.dart';
 import 'package:front/core/config/albumprovider.dart';
+import 'package:front/core/domain/entities/album.entity.dart';
 import 'package:front/features/viewpictures/presentation/widgets/photo_grid_item.widget.dart';
+import 'package:front/features/_global/presentation/widgets/bottom_bar.widget.dart';
 
 class ViewPictures extends StatelessWidget {
   final String albumId;
@@ -12,8 +13,10 @@ class ViewPictures extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final albumProvider = Provider.of<AlbumProvider>(context);
-    final album =
-        albumProvider.albums.firstWhere((album) => album.id == albumId);
+    // Rendre album nullable pour permettre le retour de null.
+    final AlbumEntity album = albumProvider.albums.firstWhere(
+        (album) => album.id == albumId,
+        orElse: () => [] as AlbumEntity);
 
     return Scaffold(
       appBar: AppBar(
@@ -21,14 +24,14 @@ class ViewPictures extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () {},
+            onPressed: () {
+              // Logique pour partager l'album
+            },
           ),
           IconButton(
-            icon: const Icon(
-              Icons.delete,
-            ),
+            icon: const Icon(Icons.delete),
             onPressed: () {
-              //share album with other users
+              // Logique pour supprimer l'album
             },
           ),
         ],
@@ -39,16 +42,17 @@ class ViewPictures extends StatelessWidget {
           crossAxisSpacing: 4,
           mainAxisSpacing: 4,
         ),
-        itemCount: album.picturePath.length,
+        itemCount: album.images.length,
         itemBuilder: (context, index) {
+          final image = album.images[index];
           return PhotoGridItem(
-            key: ValueKey(album.picturePath[index]),
-            imagePath: album.picturePath[index],
-            allImagePaths: album.picturePath,
+            key: ValueKey(image.id),
+            imagePath: image.path,
+            allImagePaths: [''],
           );
         },
       ),
-      bottomNavigationBar: BottomBarWidget(),
+      bottomNavigationBar: const BottomBarWidget(),
     );
   }
 }
