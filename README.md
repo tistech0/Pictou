@@ -15,6 +15,8 @@ cd PROJECT_DIR
 pre-commit install
 ```
 
+**CMake** needs to be installed on your system.
+
 ### NixOS
 
 On NixOS, the dev environment will set itself up upon `cd`-ing into the directory.
