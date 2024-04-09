@@ -61,6 +61,29 @@ class AlbumProvider with ChangeNotifier {
       print("Erreur lors de la création de l'album: $e");
     }
   }
+
+  Future<void> deleteAlbum(String albumId, String accessToken) async {
+    try {
+      var albumsApi = _pictouApi.getAlbumsApi();
+      final response = await albumsApi.deleteAlbum(
+        id: albumId,
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+
+      if (response.statusCode == 200) {
+        print("Album supprimé avec succès.");
+
+        // Supprimez l'album de la liste en mémoire si nécessaire
+        _albums.removeWhere((album) => album.id == albumId);
+        notifyListeners();
+      } else {
+        print(
+            "Erreur lors de la suppression de l'album: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Exception lors de la suppression de l'album: $e");
+    }
+  }
   //create album method
 
 // Autres méthodes...
