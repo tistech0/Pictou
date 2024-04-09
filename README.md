@@ -17,6 +17,17 @@ pre-commit install
 
 **CMake** needs to be installed on your system.
 
+Run the following commands to configure the [image classifier](./back/image-classifier/):
+
+```sh
+export TMPDIR="$home/tmp"
+mkdir "$TMPDIR"
+cd back/image-classifier
+source configure.sh
+```
+
+You then need to run `cargo build/run` inside the python venv (see [how to activate a venv](https://docs.python.org/3/tutorial/venv.html#creating-virtual-environments)).
+
 ### NixOS
 
 On NixOS, the dev environment will set itself up upon `cd`-ing into the directory.
