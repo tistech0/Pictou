@@ -1,0 +1,6 @@
+imageai
+torch
+torchvision
+tensorflow
+opencv-python
+pillow

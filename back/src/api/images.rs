@@ -27,7 +27,7 @@ use futures::prelude::stream::*;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncWriteExt, BufReader};
 use tokio_util::io::{ReaderStream, StreamReader};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -111,6 +111,7 @@ struct NewStoredImage {
 struct NewUserImage {
     user_id: Uuid,
     image_id: ImageHash,
+    tags: Vec<String>,
 }
 
 /// Get an image by its id.
@@ -373,6 +374,7 @@ pub async fn upload_image(
     app_cfg: web::Data<AppConfiguration>,
     db: web::Data<Database>,
     storage: web::Data<dyn ImageStorage>,
+    classifier: web::Data<crate::image_classifier::ImageClassifier>,
 ) -> ActixResult<HttpResponse> {
     let size = size.into_inner().into_inner();
 
@@ -417,6 +419,19 @@ pub async fn upload_image(
 
     // consume the rest of the payload stream, not doing so would result in an error
     while let Some(_extra_field) = payload.next().await.transpose()? {}
+
+    let image_tags = classifier
+        .classify(&decoded)
+        .map_err(ApiError::image_classifier_failure)?;
+
+    let image_tags: Vec<String> = image_tags
+        .into_iter()
+        .filter(|tag| {
+            trace!( tag = %tag.tag, probability = %tag.probability, "Detected image tag ");
+            tag.probability > app_cfg.image_classifier_min_probability
+        })
+        .map(|tag| tag.tag)
+        .collect();
 
     let to_store = NewStoredImage {
         hash: decoded.hash(),
@@ -475,6 +490,7 @@ pub async fn upload_image(
             .values(NewUserImage {
                 user_id: auth.user_id,
                 image_id: to_store.hash,
+                tags: image_tags,
             })
             .on_conflict((user_images::user_id, user_images::image_id))
             .do_update()
