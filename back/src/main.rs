@@ -18,6 +18,7 @@ mod config;
 mod database;
 mod error_handler;
 mod image;
+mod image_classifier;
 mod log;
 mod openapi;
 mod schema;
@@ -70,12 +71,17 @@ async fn init() -> anyhow::Result<()> {
     // lifted the call to HttpServer::new because it does not accept async
     let auth_clients = web::Data::new(OAuth2Clients::new(app_cfg.clone()).await);
 
+    // Python interpreter is initialized here
+    let classifier =
+        web::Data::new(image_classifier::ImageClassifier::new(app_cfg.clone()).unwrap());
+
     let server = HttpServer::new(move || {
         let auth_clients = auth_clients.clone();
         App::new()
             .app_data(app_cfg.clone())
             .app_data(database.clone())
             .app_data(image_storage.clone())
+            .app_data(classifier.clone())
             .wrap(TracingLogger::default())
             .wrap(NormalizePath::trim())
             .wrap(

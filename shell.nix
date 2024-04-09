@@ -20,6 +20,7 @@ in
       diesel-cli
       postgresql
       libjxl-0-10-2
+      python312
     ];
 
     nativeBuildInputs = with pkgs; [
@@ -28,5 +29,6 @@ in
 
     shellHook = ''
       pre-commit install
+      cd back/image-classifier && source configure.sh
     '';
   }

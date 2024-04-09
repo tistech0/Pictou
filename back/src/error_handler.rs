@@ -33,6 +33,7 @@ pub enum ApiErrorCode {
     UnsupportedImageType,
     InvalidEncoding,
     ReadOnly,
+    ImageClassifierFailure,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -162,6 +163,14 @@ impl ApiError {
             StatusCode::FORBIDDEN,
             ApiErrorCode::ReadOnly,
             "This resource is read-only for the current user",
+        )
+    }
+
+    pub fn image_classifier_failure(description: impl ToString) -> Self {
+        ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ApiErrorCode::ImageClassifierFailure,
+            description,
         )
     }
 }
