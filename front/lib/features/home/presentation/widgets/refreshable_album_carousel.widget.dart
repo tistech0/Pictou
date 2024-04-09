@@ -28,8 +28,6 @@ class _RefreshableAlbumCarouselWidgetState
 
     loadAlbums();
     await Future.delayed(Duration(seconds: 1));
-
-    // Simuler un chargement de données
   }
 
   @override

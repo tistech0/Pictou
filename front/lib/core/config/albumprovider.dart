@@ -37,13 +37,14 @@ class AlbumProvider with ChangeNotifier {
     }
   }
 
-  Future<void> createAlbum(
-      String name, List<String> tags, String accessToken) async {
+  Future<void> createAlbum(String name, List<String> tags, List<String> images,
+      String accessToken) async {
     try {
       var albumsApi = _pictouApi.getAlbumsApi();
       final albumPost = AlbumPost((b) => b
         ..name = name
-        ..tags = ListBuilder(tags));
+        ..tags = ListBuilder(tags)
+        ..images = ListBuilder(images));
 
       final response = await albumsApi.createAlbum(
         albumPost: albumPost,

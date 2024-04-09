@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'container_image.widget.dart';
 
 class AlbumCarouselWidget extends StatefulWidget {
-  const AlbumCarouselWidget({Key? key}) : super(key: key);
+  const AlbumCarouselWidget({super.key});
 
   @override
   State<AlbumCarouselWidget> createState() => _AlbumCarouselWidgetState();

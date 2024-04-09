@@ -28,10 +28,13 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
 
     if (userProvider.user?.accessToken != null &&
         _albumNameController.text.isNotEmpty) {
-      // Appel de la nouvelle méthode createAlbum avec le token d'accès et le nom de l'album
+      // Convertit les chemins des fichiers image en une liste de chaînes de caractères
+      List<String> imagePaths = _images!.map((image) => image.path).toList();
+
       await albumProvider.createAlbum(
         _albumNameController.text,
-        ["tag"], // Ajoutez un champ de saisie pour la description si nécessaire
+        ["tag"], // Ici, ajustez selon la logique de votre application
+        imagePaths,
         userProvider.user!.accessToken!,
       );
 
@@ -78,7 +81,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
       actions: <Widget>[
         TextButton(
           style: TextButton.styleFrom(
-            primary: Colors.white,
+            foregroundColor: Colors.white,
             backgroundColor: Colors.red,
           ),
           onPressed: () {
@@ -88,7 +91,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
         ),
         TextButton(
           style: TextButton.styleFrom(
-            primary: Colors.white,
+            foregroundColor: Colors.white,
             backgroundColor: Colors.green,
           ),
           onPressed: createAlbum,
