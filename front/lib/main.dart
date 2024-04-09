@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pictouapi/pictouapi.dart'; // Assurez-vous que cette bibliothèque existe ou remplacez-la par celle que vous utilisez réellement.
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pictouapi/pictouapi.dart';
+
 import 'core/config/albumprovider.dart';
 import 'core/config/userprovider.dart';
 import 'core/config/themeprovider.dart';
+
 import 'features/home/presentation/screens/homepage.screen.dart';
 import 'features/login/presentation/screens/login.screen.dart';
 import 'features/settings/presentation/screens/setting.screen.dart';
 import 'features/viewpictures/presentation/screens/viewpictures.screen.dart';
 import 'features/_global/presentation/widgets/splashscreen.widget.dart';
 
-void main() {
+Future<void> main() async {
+  // Load environment variables from .env file
+  await dotenv.load(fileName: ".env");
+
   runApp(const MyApp());
 }
 
@@ -19,13 +25,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
             create: (_) => AlbumProvider(
-                  Pictouapi(),
-                  serializers,
-                )),
+              Pictouapi(),
+              serializers,
+            )),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider(null)),
       ],

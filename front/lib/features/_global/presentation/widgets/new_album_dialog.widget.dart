@@ -78,8 +78,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
       actions: <Widget>[
         TextButton(
           style: TextButton.styleFrom(
-            primary: Colors.white,
-            backgroundColor: Colors.red,
+            foregroundColor: Colors.white, backgroundColor: Colors.red,
           ),
           onPressed: () {
             Navigator.of(context).pop();
@@ -88,8 +87,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
         ),
         TextButton(
           style: TextButton.styleFrom(
-            primary: Colors.white,
-            backgroundColor: Colors.green,
+            foregroundColor: Colors.white, backgroundColor: Colors.green,
           ),
           onPressed: createAlbum,
           child: const Text('Ajouter'),

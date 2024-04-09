@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
   Dio dio = Dio();
+  final baseUrl = dotenv.env['BASE_URL'];
 
   ApiService() {
-    dio.options.baseUrl = 'http://localhost:8000/api';
+    dio.options.baseUrl = '$baseUrl';
 
     dio.interceptors.addAll([
       InterceptorsWrapper(
