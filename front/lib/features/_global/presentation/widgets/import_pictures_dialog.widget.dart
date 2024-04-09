@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:front/core/config/albumprovider.dart'; // Assurez-vous que le chemin d'accès est correct
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 
 class ImportPicturesDialog extends StatefulWidget {
   const ImportPicturesDialog({super.key});
 
   @override
-  State<ImportPicturesDialog> createState() => _NewAlbumDialogState();
+  State<ImportPicturesDialog> createState() => _ImportPicturesDialogState();
 }
 
-class _NewAlbumDialogState extends State<ImportPicturesDialog> {
+class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
   final ImagePicker _picker = ImagePicker();
   String? _selectedAlbum;
-  final List<String> _albums = ['Album 1', 'Album 2', 'Album 3'];
 
   @override
   Widget build(BuildContext context) {
+    final albumProvider = Provider.of<AlbumProvider>(context);
+    final albums = albumProvider.albums;
+
     return AlertDialog(
       title: const Text('Importer des Photos'),
       content: Column(
@@ -23,10 +27,11 @@ class _NewAlbumDialogState extends State<ImportPicturesDialog> {
           DropdownButtonFormField<String>(
             value: _selectedAlbum,
             hint: const Text('Sélectionnez un album'),
-            items: _albums.map<DropdownMenuItem<String>>((String value) {
+            items: albums.map<DropdownMenuItem<String>>((album) {
               return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
+                value: album
+                    .name, // Utilisez l'identifiant ou un identificateur unique ici si nécessaire
+                child: Text(album.name),
               );
             }).toList(),
             onChanged: (String? newValue) {
@@ -38,8 +43,9 @@ class _NewAlbumDialogState extends State<ImportPicturesDialog> {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
-              final List<XFile> images = await _picker.pickMultiImage();
-              if (images.isNotEmpty) {
+              final List<XFile>? images = await _picker.pickMultiImage();
+              if (images != null && images.isNotEmpty) {
+                // Logique pour traiter les images sélectionnées pour l'album
                 print('Images sélectionnées pour $_selectedAlbum');
               }
             },
