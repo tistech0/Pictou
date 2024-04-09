@@ -1,3 +1,4 @@
+import 'package:built_collection/src/list.dart';
 import 'package:flutter/material.dart';
 import 'package:pictouapi/pictouapi.dart';
 import 'package:built_value/serializer.dart';
@@ -35,6 +36,31 @@ class AlbumProvider with ChangeNotifier {
       print("Erreur lors de la récupération des albums: $e");
     }
   }
+
+  Future<void> createAlbum(
+      String name, List<String> tags, String accessToken) async {
+    try {
+      var albumsApi = _pictouApi.getAlbumsApi();
+      final albumPost = AlbumPost((b) => b
+        ..name = name
+        ..tags = ListBuilder(tags));
+
+      final response = await albumsApi.createAlbum(
+        albumPost: albumPost,
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        print("Album créé avec succès: ${response.data}");
+
+        _albums.add(AlbumEntity.fromAlbumModel(response.data!));
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Erreur lors de la création de l'album: $e");
+    }
+  }
+  //create album method
 
 // Autres méthodes...
 }

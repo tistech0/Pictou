@@ -14,44 +14,51 @@ class NewAlbumDialog extends StatefulWidget {
 class _NewAlbumDialogState extends State<NewAlbumDialog> {
   final ImagePicker _picker = ImagePicker();
   List<XFile>? _images = [];
+  final TextEditingController _albumNameController = TextEditingController();
+
+  @override
+  void dispose() {
+    _albumNameController.dispose();
+    super.dispose();
+  }
+
+  void createAlbum() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+
+    if (userProvider.user?.accessToken != null &&
+        _albumNameController.text.isNotEmpty) {
+      // Appel de la nouvelle méthode createAlbum avec le token d'accès et le nom de l'album
+      await albumProvider.createAlbum(
+        _albumNameController.text,
+        ["tag"], // Ajoutez un champ de saisie pour la description si nécessaire
+        userProvider.user!.accessToken!,
+      );
+
+      Navigator.of(context).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // void createAlbum() {
-    //   final userProvider = Provider.of<UserProvider>(context, listen: false);
-    //   final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
-    //
-    //   if (userProvider.user?.accessToken != null) {
-    //     albumProvider.createAlbum(
-    //       name: 'Album Name number 444',
-    //       imageIds: _images!.map((image) => image.path).toList(),
-    //       sharedWith: [],
-    //       tags: [],
-    //     );
-    //   }
-    //
-    //   if (userProvider.user?.accessToken != null) {
-    //     albumProvider.fetchAlbums(userProvider.user!.accessToken!);
-    //   }
-    // }
-
     return AlertDialog(
       title: const Text('Créer un Album'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const TextField(
-              decoration: InputDecoration(
+            TextField(
+              controller: _albumNameController,
+              decoration: const InputDecoration(
                 hintText: "Nom de l'album",
               ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
-                final List<XFile> selectedImages =
+                final List<XFile>? selectedImages =
                     await _picker.pickMultiImage();
-                if (selectedImages.isNotEmpty) {
+                if (selectedImages != null && selectedImages.isNotEmpty) {
                   setState(() {
                     _images = selectedImages;
                   });
@@ -71,6 +78,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
       actions: <Widget>[
         TextButton(
           style: TextButton.styleFrom(
+            primary: Colors.white,
             backgroundColor: Colors.red,
           ),
           onPressed: () {
@@ -80,12 +88,10 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
         ),
         TextButton(
           style: TextButton.styleFrom(
+            primary: Colors.white,
             backgroundColor: Colors.green,
           ),
-          onPressed: () {
-            // createAlbum();
-            Navigator.of(context).pop();
-          },
+          onPressed: createAlbum,
           child: const Text('Ajouter'),
         ),
       ],
