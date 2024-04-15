@@ -3,6 +3,11 @@ name = "picto-back"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["testing-incompatible"]
+testing-incompatible = ["python-classifier"]
+python-classifier = ["pyo3"]
+
 [dependencies]
 actix-web = { version = "^4.5.1", default-features = false, features = ["macros", "compress-gzip", "compress-zstd", "cookies", "http2"] }
 dotenv = "~0.15.0"
@@ -57,7 +62,7 @@ image-backend = { version = "~0.25.0", package = "image", default-features = fal
 ] }
 md-5 = "0.10.6"
 jpegxl-rs = { version = "~0.10.2", features = ["image", "vendored"] }
-pyo3 = { version = "~0.21.1", features = ["auto-initialize"] }
+pyo3 = { version = "~0.21.1", features = ["auto-initialize"], optional = true }
 
 
 [patch.crates-io]
