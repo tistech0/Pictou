@@ -74,6 +74,7 @@ impl ImageType {
     pub fn from_mime(mime: impl AsRef<str>) -> Option<Self> {
         match mime.as_ref() {
             "image/jpeg" => Some(Self::Jpeg),
+            "image/jpg" => Some(Self::Jpeg),
             "image/png" => Some(Self::Png),
             "image/gif" => Some(Self::Gif),
             "image/jxl" => Some(Self::Jxl),
