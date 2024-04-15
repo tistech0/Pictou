@@ -1,13 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
+import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
-import 'package:front/features/_global/domain/usecases/upload_image.use_case.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
-import 'package:http_parser/http_parser.dart'; // Assurez-vous que ce package est inclus pour MediaType
+import 'package:http_parser/http_parser.dart';
 
 class ImportPicturesDialog extends StatefulWidget {
   const ImportPicturesDialog({super.key});
@@ -19,44 +18,32 @@ class ImportPicturesDialog extends StatefulWidget {
 class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
   final ImagePicker _picker = ImagePicker();
   String? _selectedAlbum;
-  UploadImageUseCase? _uploadImageUseCase;
 
   @override
   void initState() {
     super.initState();
-    final dio = Dio();
-    final pictouApi =
-        Pictouapi(); // Assurez-vous que l'instance est correctement configurée
-
-    _uploadImageUseCase = UploadImageUseCase(dio, pictouApi);
   }
 
   Future<void> _uploadImages(List<XFile> images) async {
+    final imagesProvider = Provider.of<ImagesProvider>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final String? accessToken = userProvider.user?.accessToken;
-
-    if (accessToken == null) {
-      print('Échec du téléchargement : Token d\'accès non disponible');
-      return;
-    }
+    final accessToken = userProvider.user?.accessToken;
 
     for (var imageFile in images) {
-      final String filePath = imageFile.path;
-      final String fileName = path.basename(filePath);
-      final MultipartFile multipartFile = await MultipartFile.fromFile(
-        filePath,
-        filename: fileName,
-        contentType: MediaType('image', 'jpeg'),
-      );
+      final image = await MultipartFile.fromFile(imageFile.path,
+          filename: path.basename(imageFile.path),
+          contentType:
+              MediaType('image', path.extension(imageFile.path).substring(1)));
+
+      print('Image format: ${path.extension(imageFile.path).substring(1)}');
 
       final uploadResponse =
-          await _uploadImageUseCase?.uploadImage(multipartFile, accessToken);
+          await imagesProvider.uploadImage(image, accessToken!);
 
-      if (uploadResponse != null && uploadResponse.statusCode == 200) {
-        print('Image téléchargée avec succès : ${uploadResponse.data}');
+      if (uploadResponse != null) {
+        print('Image téléchargée avec succès:');
       } else {
-        print(
-            'Échec du téléchargement de l\'image : ${uploadResponse?.statusCode}');
+        print('Échec du téléchargement de l\'image');
       }
     }
   }
@@ -89,16 +76,19 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
-              final List<XFile>? images = await _picker.pickMultiImage();
-              if (images != null && images.isNotEmpty) {
+              final List<XFile> images = await _picker.pickMultiImage();
+              if (images.isNotEmpty) {
+                print("${images.length} images picked.");
                 await _uploadImages(images);
                 print('Images sélectionnées pour $_selectedAlbum');
+              } else {
+                print("No images selected.");
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.secondary,
             ),
-            child: const Text('Importer des Photos'),
+            child: const Text('Importer dessss Photos'),
           ),
         ],
       ),

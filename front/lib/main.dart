@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:front/core/config/imagesprovider.dart';
 import 'package:provider/provider.dart';
 import 'package:pictouapi/pictouapi.dart'; // Assurez-vous que cette bibliothèque existe ou remplacez-la par celle que vous utilisez réellement.
 import 'core/config/albumprovider.dart';
@@ -23,6 +24,11 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(
             create: (_) => AlbumProvider(
+                  Pictouapi(),
+                  serializers,
+                )),
+        ChangeNotifierProvider(
+            create: (_) => ImagesProvider(
                   Pictouapi(),
                   serializers,
                 )),
