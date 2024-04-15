@@ -1,24 +1,18 @@
-use std::fs::File;
-use std::io::Read;
+use std::{fs::File, io::Read};
 
 use actix_web::web;
 use pyo3::prelude::*;
 
-use crate::config::AppConfiguration;
-use crate::image::DecodedImage;
+use super::{ClassifierError, ImageTagPrediction};
+use crate::{config::AppConfiguration, image::DecodedImage};
 
 #[derive(Debug)]
 pub struct ImageClassifier {
     module: Py<PyModule>,
 }
 
-pub struct ImageTagPrediction {
-    pub tag: String,
-    pub probability: f64,
-}
-
 impl ImageClassifier {
-    pub fn new(app_cfg: web::Data<AppConfiguration>) -> Result<Self, PyErr> {
+    pub fn new(app_cfg: web::Data<AppConfiguration>) -> Result<Self, ClassifierError> {
         Python::with_gil(|py| {
             let mut file = File::open(&app_cfg.image_classifier_module).unwrap();
             let mut code = String::new();
@@ -41,7 +35,10 @@ impl ImageClassifier {
         })
     }
 
-    pub fn classify(&self, image: &DecodedImage) -> Result<Vec<ImageTagPrediction>, PyErr> {
+    pub fn classify(
+        &self,
+        image: &DecodedImage,
+    ) -> Result<Vec<ImageTagPrediction>, ClassifierError> {
         Python::with_gil(|py| {
             let bound_module = self.module.bind(py);
             let result = bound_module
