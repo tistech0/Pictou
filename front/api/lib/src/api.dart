@@ -29,7 +29,7 @@ class Pictouapi {
         this.dio = dio ??
             Dio(BaseOptions(
               baseUrl: basePathOverride ??
-                  'https://5a04-163-5-23-29.ngrok-free.app/api', // URL par défaut pour le développement
+                  'http://localhost:8000/api', // URL par défaut pour le développement
               connectTimeout: const Duration(milliseconds: 5000),
               receiveTimeout: const Duration(milliseconds: 3000),
             )) {
