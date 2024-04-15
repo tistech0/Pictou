@@ -42,6 +42,7 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
         await Provider.of<AlbumProvider>(context, listen: false)
             .addImageToAlbum(
                 _selectedAlbum!.id, uploadResponse.id, accessToken);
+        Navigator.of(context).pop();
       } else {
         print('Échec du téléchargement de l\'image ou album non sélectionné');
       }
@@ -58,18 +59,19 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          DropdownButtonFormField<AlbumEntity>(
-            value: _selectedAlbum,
+          DropdownButtonFormField<String>(
+            value: _selectedAlbum?.id,
             hint: const Text('Sélectionnez un album'),
-            items: albums.map<DropdownMenuItem<AlbumEntity>>((album) {
-              return DropdownMenuItem<AlbumEntity>(
-                value: album,
+            items: albums.map<DropdownMenuItem<String>>((album) {
+              return DropdownMenuItem<String>(
+                value: album.id,
                 child: Text(album.name),
               );
             }).toList(),
-            onChanged: (AlbumEntity? newValue) {
+            onChanged: (String? newValue) {
               setState(() {
-                _selectedAlbum = newValue;
+                _selectedAlbum =
+                    albums.firstWhere((album) => album.id == newValue);
               });
             },
           ),
