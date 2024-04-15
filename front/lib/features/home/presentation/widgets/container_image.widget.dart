@@ -31,7 +31,7 @@ class ContainerImageWidget extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ViewPictures(albumId: album.id),
+                  builder: (context) => ViewPicture(albumId: album.id),
                 ),
               );
             }

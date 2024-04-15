@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:front/core/config/imagesprovider.dart';
 import 'package:provider/provider.dart';
 import 'package:pictouapi/pictouapi.dart'; // Assurez-vous que cette bibliothèque existe ou remplacez-la par celle que vous utilisez réellement.
@@ -11,9 +12,13 @@ import 'features/settings/presentation/screens/setting.screen.dart';
 import 'features/viewpictures/presentation/screens/viewpictures.screen.dart';
 import 'features/_global/presentation/widgets/splashscreen.widget.dart';
 
-void main() {
+Future<void> main() async {
+  // Load environment variables from .env file
+  await dotenv.load(fileName: ".env");
+
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -59,7 +64,7 @@ class MyApp extends StatelessWidget {
               '/': (context) => const SplashScreen(),
               '/login': (context) => const LoginScreen(),
               '/home': (context) => const HomePage(),
-              '/view-picture': (context) => const ViewPictures(albumId: ''),
+              '/view-picture': (context) => const ViewPicture(albumId: ''),
               '/settings': (context) => const Settings(),
             },
           );
