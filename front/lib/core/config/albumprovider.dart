@@ -37,8 +37,8 @@ class AlbumProvider with ChangeNotifier {
     }
   }
 
-  Future<void> createAlbum(String name, List<String> tags, List<String> images,
-      String accessToken) async {
+  Future<String?> createAlbum(String name, List<String> tags,
+      List<String> images, String accessToken) async {
     try {
       var albumsApi = _pictouApi.getAlbumsApi();
       final albumPost = AlbumPost((b) => b
@@ -52,13 +52,18 @@ class AlbumProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        print("Album créé avec succès: ${response.data}");
-
-        _albums.add(AlbumEntity.fromAlbumModel(response.data!));
+        var createdAlbum = AlbumEntity.fromAlbumModel(response.data!);
+        _albums.add(createdAlbum);
         notifyListeners();
+        return createdAlbum.id; // Retourne l'ID de l'album créé
+      } else {
+        print(
+            "Échec de la création de l'album avec status code: ${response.statusCode}");
+        return null;
       }
     } catch (e) {
       print("Erreur lors de la création de l'album: $e");
+      return null;
     }
   }
 

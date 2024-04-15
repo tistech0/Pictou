@@ -16,10 +16,12 @@ in
   pkgs.mkShell {
     name = "pictou";
     buildInputs = with pkgs; [
-      pre-commit
+      cargo-tarpaulin
       diesel-cli
-      postgresql
       libjxl-0-10-2
+      postgresql
+      pre-commit
+      python312
     ];
 
     nativeBuildInputs = with pkgs; [
@@ -28,5 +30,6 @@ in
 
     shellHook = ''
       pre-commit install
+      cd back/image-classifier && source configure.sh
     '';
   }

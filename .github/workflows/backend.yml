@@ -73,7 +73,19 @@ jobs:
       with:
         shared-key: "back-ci"
         workspaces: "back -> target"
+
+    - name: Install cargo-tarpaulin
+      run: cargo install cargo-tarpaulin
+
+    - name: Run tests
+      run: |
+        cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v2
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+        fail_ci_if_error: true
+
     - name: Build
       run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose

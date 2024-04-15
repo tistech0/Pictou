@@ -3,8 +3,13 @@ name = "picto-back"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["testing-incompatible"]
+testing-incompatible = ["python-classifier"]
+python-classifier = ["pyo3"]
+
 [dependencies]
-actix-web = "^4.5.1"
+actix-web = { version = "^4.5.1", default-features = false, features = ["macros", "compress-gzip", "compress-zstd", "cookies", "http2"] }
 dotenv = "~0.15.0"
 tokio = "^1.36.0"
 tokio-util = "~0.7.10"
@@ -45,7 +50,6 @@ reqwest = { version = "~0.11.26", default-features = false, features = [
     "json",
     "rustls-tls",
     "gzip",
-    "brotli",
     "deflate",
 ] }
 url = { version = "~2.5.0", features = ["serde"] }
@@ -57,7 +61,12 @@ image-backend = { version = "~0.25.0", package = "image", default-features = fal
     "gif",
 ] }
 md-5 = "0.10.6"
-jpegxl-rs = { version = "~0.10.2", features = ["image"] }
+jpegxl-rs = { version = "~0.10.2", features = ["image", "vendored"] }
+pyo3 = { version = "~0.21.1", features = ["auto-initialize"], optional = true }
+
+
+[patch.crates-io]
+jpegxl-rs  = { git = 'https://github.com/MisterPeModder/jpegxl-rs.git' }
 
 [dev-dependencies]
 actix-rt = "^2.9.0"

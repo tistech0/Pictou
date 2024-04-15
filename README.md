@@ -15,7 +15,23 @@ cd PROJECT_DIR
 pre-commit install
 ```
 
-Install [libjxl 10.0.2](https://github.com/libjxl/libjxl/releases/tag/v0.10.2) and pkg-config on your system for the back.
+**CMake** needs to be installed on your system.
+
+Run the following commands to configure the [image classifier](./back/image-classifier/):
+
+```sh
+export TMPDIR="$home/tmp"
+mkdir "$TMPDIR"
+cd back/image-classifier
+source configure.sh
+```
+
+You may run without the image classifier (and the dependency on Python) by running the following command:
+```sh
+cargo run --no-default-features
+```
+
+You then need to run `cargo build/run` inside the python venv (see [how to activate a venv](https://docs.python.org/3/tutorial/venv.html#creating-virtual-environments)).
 
 ### NixOS
 

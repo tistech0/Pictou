@@ -30,6 +30,9 @@ pub struct AppConfiguration {
     pub albums_query_default_limit: u32,
     pub albums_query_max_limit: u32,
     pub max_tags_per_resource: u32,
+    pub image_classifier_module: String,
+    pub image_classifier_model: String,
+    pub image_classifier_min_probability: f64,
 }
 
 impl AppConfiguration {
@@ -79,6 +82,12 @@ impl AppConfiguration {
                 .map_or(Ok(50), |s| s.parse())?,
             max_tags_per_resource: env::var("MAX_TAGS_PER_RESOURCE")
                 .map_or(Ok(32), |s| s.parse())?,
+            image_classifier_module: env::var("IMAGE_CLASSIFIER_MODULE")
+                .unwrap_or_else(|_| "image-classifier/image_classifier.py".to_owned()),
+            image_classifier_model: env::var("IMAGE_CLASSIFIER_MODEL")
+                .unwrap_or_else(|_| "image-classifier/model.pth".to_owned()),
+            image_classifier_min_probability: env::var("IMAGE_CLASSIFIER_MIN_PROBABILITY")
+                .map_or(Ok(70.0), |s| s.parse())?,
         })
     }
 }
@@ -106,6 +115,9 @@ impl Default for AppConfiguration {
             albums_query_default_limit: 25,
             albums_query_max_limit: 50,
             max_tags_per_resource: 32,
+            image_classifier_module: "image-classifier/image_classifier.py".to_owned(),
+            image_classifier_model: "image-classifier/model.pth".to_owned(),
+            image_classifier_min_probability: 70.0,
         }
     }
 }
@@ -139,6 +151,12 @@ impl Debug for AppConfiguration {
             )
             .field("albums_query_max_limit", &self.albums_query_max_limit)
             .field("max_tags_per_resource", &self.max_tags_per_resource)
+            .field("image_classifier_module", &self.image_classifier_module)
+            .field("image_classifier_model", &self.image_classifier_model)
+            .field(
+                "image_classifier_min_probability",
+                &self.image_classifier_min_probability,
+            )
             .finish()
     }
 }

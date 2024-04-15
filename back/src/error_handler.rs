@@ -33,6 +33,7 @@ pub enum ApiErrorCode {
     UnsupportedImageType,
     InvalidEncoding,
     ReadOnly,
+    ImageClassifierFailure,
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -136,7 +137,7 @@ impl ApiError {
         )
     }
 
-    pub fn unsupported_image_type() -> Self {
+    pub fn unsupported_image_type(mime: impl AsRef<str>) -> Self {
         let all_types = ImageType::ALL
             .iter()
             .map(|t| t.to_string())
@@ -145,7 +146,10 @@ impl ApiError {
         ApiError::new(
             StatusCode::BAD_REQUEST,
             ApiErrorCode::UnsupportedImageType,
-            format!("Unsupported image type: supported types are {all_types}"),
+            format!(
+                "Unsupported image type {:?}: supported types are {all_types}",
+                mime.as_ref()
+            ),
         )
     }
 
@@ -162,6 +166,14 @@ impl ApiError {
             StatusCode::FORBIDDEN,
             ApiErrorCode::ReadOnly,
             "This resource is read-only for the current user",
+        )
+    }
+
+    pub fn image_classifier_failure(description: impl ToString) -> Self {
+        ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            ApiErrorCode::ImageClassifierFailure,
+            description,
         )
     }
 }

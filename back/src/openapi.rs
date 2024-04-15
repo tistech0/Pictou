@@ -13,7 +13,7 @@ use crate::{
             ImageMetaData, ImagePatch, ImagePayload, ImageQuality, ImageUploadResponse,
             ImagesMetaData,
         },
-        users::{User, UserList, UserPost},
+        users::{User, UserPatch},
         Binary, OpenapiUuid,
     },
     auth::{
@@ -77,7 +77,7 @@ impl Modify for SecuritySchemas {
     components(
         schemas(ImageQuality, Binary, ImageUploadResponse, ImagePatch, ImagePayload, ImageMetaData, ImagesMetaData,
             Album, AlbumList, AlbumPost,
-            User, UserList, UserPost,
+            User, UserPatch,
             ApiErrorCode, ApiError, OpenapiUuid,
             AuthenticationResponse, PersistedUserInfo, AuthError, AuthErrorKind, RefreshTokenParams),
     ),

@@ -11,7 +11,9 @@ use image_backend::{
     DynamicImage,
 };
 use jpegxl_rs::{
-    decode::decoder_builder, encode::encoder_builder, encode::EncoderSpeed, EncodeError,
+    decode::decoder_builder,
+    encode::{encoder_builder, EncoderFrame, EncoderSpeed},
+    EncodeError,
 };
 use jpegxl_rs::{encode::EncoderResult, image::ToDynamic};
 use md5::{Digest, Md5};
@@ -72,6 +74,7 @@ impl ImageType {
     pub fn from_mime(mime: impl AsRef<str>) -> Option<Self> {
         match mime.as_ref() {
             "image/jpeg" => Some(Self::Jpeg),
+            "image/jpg" => Some(Self::Jpeg),
             "image/png" => Some(Self::Png),
             "image/gif" => Some(Self::Gif),
             "image/jxl" => Some(Self::Jxl),
@@ -112,14 +115,14 @@ impl DecodedImage {
             .lossless(false)
             .speed(EncoderSpeed::Lightning)
             .quality(1.0)
+            .has_alpha(self.inner.color().has_alpha())
             .use_container(false)
             .init_buffer_size(self.size() as usize)
             .build()?;
-        encoder.encode(
-            self.inner.as_bytes(),
-            self.inner.width(),
-            self.inner.height(),
-        )
+        let frame = EncoderFrame::new(self.inner.as_bytes())
+            .num_channels(3 + self.inner.color().has_alpha() as u32);
+
+        encoder.encode_frame(&frame, self.inner.width(), self.inner.height())
     }
 
     pub fn size(&self) -> i64 {

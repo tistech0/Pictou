@@ -3,6 +3,7 @@ import 'package:front/core/config/albumprovider.dart';
 import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
 import 'package:front/core/domain/entities/album.entity.dart';
+import 'package:front/core/domain/usecase/upload_images.use_case.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
@@ -20,32 +21,35 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
   final ImagePicker _picker = ImagePicker();
   AlbumEntity? _selectedAlbum;
 
+  UploadImagesUseCase? _uploadImagesUseCase;
+
   @override
   void initState() {
     super.initState();
+    initializeUploadImagesUseCase();
   }
 
-  Future<void> _uploadImages(List<XFile> images) async {
+  void initializeUploadImagesUseCase() {
     final imagesProvider = Provider.of<ImagesProvider>(context, listen: false);
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final accessToken = userProvider.user?.accessToken;
 
-    for (var imageFile in images) {
-      final image = await MultipartFile.fromFile(imageFile.path,
-          filename: path.basename(imageFile.path),
-          contentType:
-              MediaType('image', path.extension(imageFile.path).substring(1)));
+    if (accessToken != null) {
+      _uploadImagesUseCase = UploadImagesUseCase(
+        imagesProvider: imagesProvider,
+        albumProvider: albumProvider,
+        accessToken: accessToken,
+        onSuccess: () => Navigator.of(context).pop(),
+      );
+    }
+  }
 
-      final uploadResponse =
-          await imagesProvider.uploadImage(image, accessToken!);
-      if (uploadResponse != null && _selectedAlbum != null) {
-        await Provider.of<AlbumProvider>(context, listen: false)
-            .addImageToAlbum(
-                _selectedAlbum!.id, uploadResponse.id, accessToken);
-        Navigator.of(context).pop();
-      } else {
-        print('Échec du téléchargement de l\'image ou album non sélectionné');
-      }
+  Future<void> _uploadImages(List<XFile> images) async {
+    if (_uploadImagesUseCase != null && images.isNotEmpty) {
+      await _uploadImagesUseCase!.call(_selectedAlbum, images);
+    } else {
+      print("Aucune image sélectionnée ou problème de configuration.");
     }
   }
 
@@ -82,7 +86,7 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
               if (images.isNotEmpty) {
                 print("${images.length} images picked.");
                 await _uploadImages(images);
-                print('Images sélectionnées pour $_selectedAlbum');
+                print('Images sélectionnées pour${_selectedAlbum?.id}');
               } else {
                 print("No images selected.");
               }
@@ -90,7 +94,7 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.secondary,
             ),
-            child: const Text('Importer dessss Photos'),
+            child: const Text('Importer des Photos'),
           ),
         ],
       ),

@@ -14,6 +14,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod api;
 mod auth;
+mod classifier;
 mod config;
 mod database;
 mod error_handler;
@@ -25,6 +26,7 @@ mod storage;
 
 use crate::{
     auth::{AuthContext, OAuth2Clients},
+    classifier::ImageClassifier,
     config::AppConfiguration,
     database::Database,
     storage::{ImageStorage, LocalImageStorage},
@@ -70,12 +72,16 @@ async fn init() -> anyhow::Result<()> {
     // lifted the call to HttpServer::new because it does not accept async
     let auth_clients = web::Data::new(OAuth2Clients::new(app_cfg.clone()).await);
 
+    // Python interpreter is initialized here (if enabled)
+    let classifier = web::Data::new(ImageClassifier::new(app_cfg.clone()).unwrap());
+
     let server = HttpServer::new(move || {
         let auth_clients = auth_clients.clone();
         App::new()
             .app_data(app_cfg.clone())
             .app_data(database.clone())
             .app_data(image_storage.clone())
+            .app_data(classifier.clone())
             .wrap(TracingLogger::default())
             .wrap(NormalizePath::trim())
             .wrap(
