@@ -1599,6 +1599,7 @@ dependencies = [
  "utoipa-swagger-ui",
  "utoipa_auto_discovery",
  "uuid",
+ "zstd-safe",
 ]
 
 [[package]]
