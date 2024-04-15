@@ -40,7 +40,6 @@ class ImagesProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200 && response.data != null) {
-        print('ok');
         notifyListeners();
         return response.data;
       }
