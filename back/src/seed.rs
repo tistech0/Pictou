@@ -14,12 +14,12 @@ use diesel::prelude::*;
 use dotenv::dotenv;
 use fake::faker::name::en::Name;
 use fake::Fake;
+use std::io::Cursor;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
-use uuid::{Uuid};
-use zstd_safe::WriteBuf;
+use uuid::Uuid;
 
 use crate::schema::*;
 use crate::storage::{ImageHash, ImageStorage, LocalImageStorage, StoredImageKind};
@@ -49,12 +49,12 @@ struct NewAlbum {
     tags: Vec<String>,
 }
 async fn seed_users(db: Data<Database>) {
-    let _ = database::open(db, move |conn| {
+    database::open(db, move |conn| {
         // Create some fake users
         let new_users = (0..4)
             .map(|_| {
                 let name: Option<String> = Some(Name().fake());
-                let email_prefix = name.clone().unwrap().to_lowercase().replace(" ", ".");
+                let email_prefix = name.clone().unwrap().to_lowercase().replace(' ', ".");
                 let email_domain = "example.com";
                 info!("Creating user with email {}", email_prefix);
                 let email = format!("{}@{}", email_prefix, email_domain);
@@ -70,7 +70,8 @@ async fn seed_users(db: Data<Database>) {
         }
         Ok(())
     })
-    .await;
+    .await
+    .unwrap();
 }
 
 async fn seed_images(storage: Data<dyn ImageStorage>) -> Vec<NewStoredImage> {
@@ -96,13 +97,8 @@ async fn seed_images(storage: Data<dyn ImageStorage>) -> Vec<NewStoredImage> {
 
         let image_type = image::ImageType::Jpeg;
 
-        let decoded = match decode(
-            image_type,
-            Pin::new(&mut image_bytes.as_slice()),
-            image_bytes.len(),
-        )
-        .await
-        {
+        let mut buf = Cursor::new(image_bytes.as_ref());
+        let decoded = match decode(image_type, Pin::new(&mut buf), image_bytes.len()).await {
             Ok(decoded) => decoded,
             Err(err) => {
                 error!("Failed to decode image: {}", err);
@@ -140,7 +136,7 @@ async fn seed_images(storage: Data<dyn ImageStorage>) -> Vec<NewStoredImage> {
     image_data_vec
 }
 async fn insert_image_data(db: Data<Database>, image_data: Vec<NewStoredImage>) {
-    let _ = database::open(db, move |conn| {
+    database::open(db, move |conn| {
         // Insert the image data
         let mut cloned_image_data = image_data.clone();
         insert_into(stored_images::table)
@@ -158,7 +154,10 @@ async fn insert_image_data(db: Data<Database>, image_data: Vec<NewStoredImage>) 
         for user_id in users {
             if let Some(image_data) = cloned_image_data.pop() {
                 insert_into(user_images::table)
-                    .values((user_images::user_id.eq(user_id), user_images::image_id.eq(image_data.hash)))
+                    .values((
+                        user_images::user_id.eq(user_id),
+                        user_images::image_id.eq(image_data.hash),
+                    ))
                     .execute(conn)
                     .map_err(SimpleDatabaseError::from)?;
             } else {
@@ -167,11 +166,12 @@ async fn insert_image_data(db: Data<Database>, image_data: Vec<NewStoredImage>) 
         }
         Ok(())
     })
-    .await;
+    .await
+    .unwrap();
 }
 
-async fn seed_albums(db: Data<Database>){
-    let _ = database::open(db, move |conn| {
+async fn seed_albums(db: Data<Database>) {
+    database::open(db, move |conn| {
         // Get one user
         let user_id = users::table
             .select(users::id)
@@ -203,7 +203,10 @@ async fn seed_albums(db: Data<Database>){
             .map_err(SimpleDatabaseError::from)?;
         // Add image to album
         insert_into(album_images::table)
-            .values((album_images::album_id.eq(album_id), album_images::image_id.eq(image_id)))
+            .values((
+                album_images::album_id.eq(album_id),
+                album_images::image_id.eq(image_id),
+            ))
             .execute(conn)
             .map_err(SimpleDatabaseError::from)?;
 
@@ -215,12 +218,16 @@ async fn seed_albums(db: Data<Database>){
             .map_err(SimpleDatabaseError::from)?;
 
         insert_into(shared_albums::table)
-            .values((shared_albums::album_id.eq(album_id), shared_albums::user_id.eq(new_user_id)))
+            .values((
+                shared_albums::album_id.eq(album_id),
+                shared_albums::user_id.eq(new_user_id),
+            ))
             .execute(conn)
             .map_err(SimpleDatabaseError::from)?;
         Ok(())
     })
-    .await;
+    .await
+    .unwrap();
 }
 
 #[actix_web::main]
