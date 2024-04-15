@@ -94,8 +94,8 @@ class ViewPictures extends StatelessWidget {
       if (userProvider.user?.accessToken != null) {
         albumProvider.fetchAlbums(userProvider.user!.accessToken!);
       }
-      Navigator.of(dialogContext).pop(); // Ferme la popup
-      Navigator.of(context).pop(); // Retour à la page précédente ou à la home
+      Navigator.of(dialogContext).pop();
+      Navigator.of(context).pop();
     }
   }
 }

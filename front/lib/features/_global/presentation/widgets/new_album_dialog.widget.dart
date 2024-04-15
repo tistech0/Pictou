@@ -33,7 +33,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
 
       await albumProvider.createAlbum(
         _albumNameController.text,
-        ["tag"], // Ici, ajustez selon la logique de votre application
+        ["tag"],
         imagePaths,
         userProvider.user!.accessToken!,
       );
@@ -59,9 +59,9 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
-                final List<XFile>? selectedImages =
+                final List<XFile> selectedImages =
                     await _picker.pickMultiImage();
-                if (selectedImages != null && selectedImages.isNotEmpty) {
+                if (selectedImages.isNotEmpty) {
                   setState(() {
                     _images = selectedImages;
                   });

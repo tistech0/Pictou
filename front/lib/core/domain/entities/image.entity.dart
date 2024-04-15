@@ -2,7 +2,7 @@ import 'package:pictouapi/src/model/image_meta_data.dart';
 
 class ImageEntity {
   final String id;
-  final String path; // Chemin d'accès à l'image ou URL
+  final String path;
   final String caption; // Légende de l'image
   final String ownerId; // Identifiant du propriétaire de l'image
   final List<String>
