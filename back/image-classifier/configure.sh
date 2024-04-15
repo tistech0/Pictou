@@ -8,3 +8,4 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 export PYTHON=`realpath ./venv/bin/python`
+export PYO3_PYTHON="$PYTHON"

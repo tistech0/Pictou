@@ -21,7 +21,7 @@ in
       libjxl-0-10-2
       postgresql
       pre-commit
-      python312
+      python311
     ];
 
     nativeBuildInputs = with pkgs; [
