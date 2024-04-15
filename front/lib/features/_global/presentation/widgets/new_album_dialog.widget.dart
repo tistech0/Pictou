@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
+import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:dio/dio.dart';
+import 'package:path/path.dart' as path;
+import 'package:http_parser/http_parser.dart';
 
 class NewAlbumDialog extends StatefulWidget {
   const NewAlbumDialog({super.key});
@@ -22,24 +26,52 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
     super.dispose();
   }
 
-  void createAlbum() async {
+  Future<void> createAlbumAndUploadImages() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+    final imagesProvider = Provider.of<ImagesProvider>(context, listen: false);
+    final accessToken = userProvider.user?.accessToken;
 
-    if (userProvider.user?.accessToken != null &&
-        _albumNameController.text.isNotEmpty) {
-      // Convertit les chemins des fichiers image en une liste de chaînes de caractères
-      List<String> imagePaths = _images!.map((image) => image.path).toList();
-
-      await albumProvider.createAlbum(
-        _albumNameController.text,
-        ["tag"],
-        imagePaths,
-        userProvider.user!.accessToken!,
-      );
-
-      Navigator.of(context).pop();
+    if (accessToken == null || _albumNameController.text.isEmpty) {
+      print('Access token ou nom d\'album manquant.');
+      return;
     }
+
+    // Création de l'album
+    final albumId = await albumProvider.createAlbum(
+      _albumNameController.text,
+      ["tag"],
+      [], // Initialement pas d'images
+      accessToken,
+    );
+
+    if (albumId != null) {
+      // Upload des images et ajout à l'album nouvellement créé
+      for (XFile image in _images!) {
+        try {
+          final imageFile = await MultipartFile.fromFile(image.path,
+              filename: path.basename(image.path),
+              contentType:
+                  MediaType('image', path.extension(image.path).substring(1)));
+
+          final uploadResponse =
+              await imagesProvider.uploadImage(imageFile, accessToken);
+          if (uploadResponse != null) {
+            await albumProvider.addImageToAlbum(
+                albumId, uploadResponse.id, accessToken);
+          } else {
+            print('Échec de l\'upload de l\'image: ${image.path}');
+          }
+        } catch (e) {
+          print('Erreur lors de l\'ajout de l\'image à l\'album: $e');
+        }
+      }
+      print('Toutes les images ont été ajoutées avec succès à l\'album.');
+    } else {
+      print('Échec de la création de l\'album.');
+    }
+
+    Navigator.of(context).pop();
   }
 
   @override
@@ -84,9 +116,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
             foregroundColor: Colors.white,
             backgroundColor: Colors.red,
           ),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('Annuler'),
         ),
         TextButton(
@@ -94,7 +124,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
             foregroundColor: Colors.white,
             backgroundColor: Colors.green,
           ),
-          onPressed: createAlbum,
+          onPressed: createAlbumAndUploadImages,
           child: const Text('Ajouter'),
         ),
       ],

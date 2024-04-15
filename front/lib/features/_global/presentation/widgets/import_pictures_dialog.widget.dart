@@ -29,23 +29,46 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
     final imagesProvider = Provider.of<ImagesProvider>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final accessToken = userProvider.user?.accessToken;
+    var errorOccurred = false;
 
     for (var imageFile in images) {
-      final image = await MultipartFile.fromFile(imageFile.path,
-          filename: path.basename(imageFile.path),
-          contentType:
-              MediaType('image', path.extension(imageFile.path).substring(1)));
+      try {
+        final image = await MultipartFile.fromFile(imageFile.path,
+            filename: path.basename(imageFile.path),
+            contentType: MediaType(
+                'image', path.extension(imageFile.path).substring(1)));
 
-      final uploadResponse =
-          await imagesProvider.uploadImage(image, accessToken!);
-      if (uploadResponse != null && _selectedAlbum != null) {
+        final uploadResponse =
+            await imagesProvider.uploadImage(image, accessToken!);
+        if (uploadResponse == null) {
+          errorOccurred = true;
+          print('Échec du téléchargement de l\'image.');
+          continue;
+        }
+
+        if (_selectedAlbum == null) {
+          errorOccurred = true;
+          print('Album non sélectionné.');
+          continue;
+        }
+
         await Provider.of<AlbumProvider>(context, listen: false)
             .addImageToAlbum(
                 _selectedAlbum!.id, uploadResponse.id, accessToken);
-        Navigator.of(context).pop();
-      } else {
-        print('Échec du téléchargement de l\'image ou album non sélectionné');
+      } catch (e) {
+        errorOccurred = true;
+        print(
+            'Exception lors du téléchargement ou de l\'ajout de l\'image: $e');
       }
+    }
+
+    if (!errorOccurred) {
+      Navigator.of(context).pop();
+      print(
+          'Toutes les images ont été téléchargées et ajoutées à l\'album avec succès.');
+    } else {
+      print(
+          'Certaines images n\'ont pas pu être téléchargées ou ajoutées à l\'album.');
     }
   }
 
@@ -82,7 +105,7 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
               if (images.isNotEmpty) {
                 print("${images.length} images picked.");
                 await _uploadImages(images);
-                print('Images sélectionnées pour $_selectedAlbum');
+                print('Images sélectionnées pour${_selectedAlbum?.id}');
               } else {
                 print("No images selected.");
               }
@@ -90,7 +113,7 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.secondary,
             ),
-            child: const Text('Importer dessss Photos'),
+            child: const Text('Importer des Photos'),
           ),
         ],
       ),
