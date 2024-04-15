@@ -26,6 +26,11 @@ cd back/image-classifier
 source configure.sh
 ```
 
+You may run without the image classifier (and the dependency on Python) by running the following command:
+```sh
+cargo run --no-default-features
+```
+
 You then need to run `cargo build/run` inside the python venv (see [how to activate a venv](https://docs.python.org/3/tutorial/venv.html#creating-virtual-environments)).
 
 ### NixOS

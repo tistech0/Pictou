@@ -11,6 +11,7 @@ use crate::{
         path_error_example, query_payload_error_example,
     },
     auth::AuthContext,
+    classifier::ImageClassifier,
     config::AppConfiguration,
     database::{self, Database, DatabaseError, SimpleDatabaseError},
     error_handler::{ApiError, ApiErrorCode},
@@ -374,7 +375,7 @@ pub async fn upload_image(
     app_cfg: web::Data<AppConfiguration>,
     db: web::Data<Database>,
     storage: web::Data<dyn ImageStorage>,
-    classifier: web::Data<crate::image_classifier::ImageClassifier>,
+    classifier: web::Data<ImageClassifier>,
 ) -> ActixResult<HttpResponse> {
     let size = size.into_inner().into_inner();
 
