@@ -84,7 +84,24 @@ class AlbumProvider with ChangeNotifier {
       print("Exception lors de la suppression de l'album: $e");
     }
   }
-  //create album method
 
-// Autres méthodes...
+  Future<void> addImageToAlbum(
+      String albumId, String imageId, String accessToken) async {
+    try {
+      final response = await _pictouApi.getAlbumsApi().addImageToAlbum(
+          id: albumId,
+          imageId: imageId,
+          headers: {"Authorization": "Bearer $accessToken"});
+
+      if (response.statusCode == 200) {
+        print("Image ajoutée à l'album avec succès.");
+        fetchAlbums(accessToken);
+      } else {
+        print(
+            "Erreur lors de l'ajout de l'image à l'album: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Exception lors de l'ajout de l'image à l'album: $e");
+    }
+  }
 }

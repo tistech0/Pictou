@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:front/core/config/albumprovider.dart';
 import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
+import 'package:front/core/domain/entities/album.entity.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
@@ -17,7 +18,7 @@ class ImportPicturesDialog extends StatefulWidget {
 
 class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
   final ImagePicker _picker = ImagePicker();
-  String? _selectedAlbum;
+  AlbumEntity? _selectedAlbum;
 
   @override
   void initState() {
@@ -35,15 +36,14 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
           contentType:
               MediaType('image', path.extension(imageFile.path).substring(1)));
 
-      print('Image format: ${path.extension(imageFile.path).substring(1)}');
-
       final uploadResponse =
           await imagesProvider.uploadImage(image, accessToken!);
-
-      if (uploadResponse != null) {
-        print('Image téléchargée avec succès:');
+      if (uploadResponse != null && _selectedAlbum != null) {
+        await Provider.of<AlbumProvider>(context, listen: false)
+            .addImageToAlbum(
+                _selectedAlbum!.id, uploadResponse.id, accessToken);
       } else {
-        print('Échec du téléchargement de l\'image');
+        print('Échec du téléchargement de l\'image ou album non sélectionné');
       }
     }
   }
@@ -58,16 +58,16 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          DropdownButtonFormField<String>(
+          DropdownButtonFormField<AlbumEntity>(
             value: _selectedAlbum,
             hint: const Text('Sélectionnez un album'),
-            items: albums.map<DropdownMenuItem<String>>((album) {
-              return DropdownMenuItem<String>(
-                value: album.name,
+            items: albums.map<DropdownMenuItem<AlbumEntity>>((album) {
+              return DropdownMenuItem<AlbumEntity>(
+                value: album,
                 child: Text(album.name),
               );
             }).toList(),
-            onChanged: (String? newValue) {
+            onChanged: (AlbumEntity? newValue) {
               setState(() {
                 _selectedAlbum = newValue;
               });
