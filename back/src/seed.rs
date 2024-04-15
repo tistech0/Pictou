@@ -1,28 +1,27 @@
+#![allow(dead_code)]
+
 mod config;
 mod database;
 mod image;
 mod schema;
 mod storage;
 
-use crate::config::AppConfiguration;
-use crate::database::{Database, SimpleDatabaseError};
-use crate::image::decode;
-use actix_web::web;
-use actix_web::web::Data;
-use diesel::dsl::insert_into;
-use diesel::prelude::*;
+use actix_web::web::{self, Data};
+use diesel::{dsl::insert_into, prelude::*};
 use dotenv::dotenv;
-use fake::faker::name::en::Name;
-use fake::Fake;
-use std::io::Cursor;
-use std::pin::Pin;
-use std::sync::Arc;
+use fake::{faker::name::en::Name, Fake};
+use std::{io::Cursor, pin::Pin, sync::Arc};
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
-use crate::schema::*;
-use crate::storage::{ImageHash, ImageStorage, LocalImageStorage, StoredImageKind};
+use crate::{
+    config::AppConfiguration,
+    database::{Database, SimpleDatabaseError},
+    image::decode,
+    schema::*,
+    storage::{ImageHash, ImageStorage, LocalImageStorage, StoredImageKind},
+};
 
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::users)]
@@ -41,6 +40,7 @@ struct NewStoredImage {
     height: i64,
     orignal_mime_type: String,
 }
+
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::albums)]
 struct NewAlbum {
@@ -48,6 +48,7 @@ struct NewAlbum {
     name: String,
     tags: Vec<String>,
 }
+
 async fn seed_users(db: Data<Database>) {
     database::open(db, move |conn| {
         // Create some fake users
@@ -135,6 +136,7 @@ async fn seed_images(storage: Data<dyn ImageStorage>) -> Vec<NewStoredImage> {
     }
     image_data_vec
 }
+
 async fn insert_image_data(db: Data<Database>, image_data: Vec<NewStoredImage>) {
     database::open(db, move |conn| {
         // Insert the image data
