@@ -11,8 +11,6 @@ class ApiService {
     dio.interceptors.addAll([
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          // Ici, vous pourriez ajouter le token d'authentification si disponible
-          // options.headers["Authorization"] = "Bearer $token";
           return handler.next(options);
         },
         onResponse: (response, handler) {

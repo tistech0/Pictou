@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'container_image.widget.dart';
 
 class AlbumCarouselWidget extends StatefulWidget {
-  const AlbumCarouselWidget({Key? key}) : super(key: key);
+  const AlbumCarouselWidget({super.key});
 
   @override
   State<AlbumCarouselWidget> createState() => _AlbumCarouselWidgetState();
@@ -38,7 +38,6 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
     final firstLineAlbums = albums.take(splitPoint).toList();
     final secondLineAlbums = albums.skip(splitPoint).toList();
 
-    // Ajoute un album fictif si nécessaire pour équilibrer les lignes ou en l'absence d'albums
     if (albums.isEmpty || albums.length % 2 != 0) {
       secondLineAlbums.add(AlbumEntity(
         id: '',

@@ -28,10 +28,13 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
 
     if (userProvider.user?.accessToken != null &&
         _albumNameController.text.isNotEmpty) {
-      // Appel de la nouvelle méthode createAlbum avec le token d'accès et le nom de l'album
+      // Convertit les chemins des fichiers image en une liste de chaînes de caractères
+      List<String> imagePaths = _images!.map((image) => image.path).toList();
+
       await albumProvider.createAlbum(
         _albumNameController.text,
-        ["tag"], // Ajoutez un champ de saisie pour la description si nécessaire
+        ["tag"],
+        imagePaths,
         userProvider.user!.accessToken!,
       );
 
@@ -56,9 +59,9 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
-                final List<XFile>? selectedImages =
+                final List<XFile> selectedImages =
                     await _picker.pickMultiImage();
-                if (selectedImages != null && selectedImages.isNotEmpty) {
+                if (selectedImages.isNotEmpty) {
                   setState(() {
                     _images = selectedImages;
                   });
@@ -78,7 +81,8 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
       actions: <Widget>[
         TextButton(
           style: TextButton.styleFrom(
-            foregroundColor: Colors.white, backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.red,
           ),
           onPressed: () {
             Navigator.of(context).pop();
@@ -87,7 +91,8 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
         ),
         TextButton(
           style: TextButton.styleFrom(
-            foregroundColor: Colors.white, backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            backgroundColor: Colors.green,
           ),
           onPressed: createAlbum,
           child: const Text('Ajouter'),

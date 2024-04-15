@@ -29,37 +29,39 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const CustomAppBar(),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Padding(
-                padding: EdgeInsets.only(bottom: 8.0),
-                child: Text(
+    return const PopScope(
+      canPop: false,
+      child: Scaffold(
+        appBar: CustomAppBar(),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
                   'Album',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-              RefreshableAlbumCarouselWidget(),
-              Padding(
-                padding: EdgeInsets.only(top: 40.0),
-                child: Text(
-                  'Custom Album',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                RefreshableAlbumCarouselWidget(),
+                Padding(
+                  padding: EdgeInsets.only(top: 40.0),
+                  child: Text(
+                    'Custom Album',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              RefreshableAlbumCarouselWidget(),
-            ],
+                RefreshableAlbumCarouselWidget(),
+                SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),
