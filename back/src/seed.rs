@@ -18,6 +18,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info};
+use uuid::{Uuid};
 use zstd_safe::WriteBuf;
 
 use crate::schema::*;
@@ -40,10 +41,17 @@ struct NewStoredImage {
     height: i64,
     orignal_mime_type: String,
 }
-pub async fn seed_users(db: Data<Database>) {
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::albums)]
+struct NewAlbum {
+    owner_id: Uuid,
+    name: String,
+    tags: Vec<String>,
+}
+async fn seed_users(db: Data<Database>) {
     let _ = database::open(db, move |conn| {
         // Create some fake users
-        let new_users = (0..5)
+        let new_users = (0..4)
             .map(|_| {
                 let name: Option<String> = Some(Name().fake());
                 let email_prefix = name.clone().unwrap().to_lowercase().replace(" ", ".");
@@ -133,9 +141,81 @@ async fn seed_images(storage: Data<dyn ImageStorage>) -> Vec<NewStoredImage> {
 }
 async fn insert_image_data(db: Data<Database>, image_data: Vec<NewStoredImage>) {
     let _ = database::open(db, move |conn| {
-        let cloned_image_data = image_data.clone();
+        // Insert the image data
+        let mut cloned_image_data = image_data.clone();
         insert_into(stored_images::table)
             .values(&cloned_image_data)
+            .execute(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        // get users
+        let users = users::table
+            .select(users::id)
+            .load::<Uuid>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        // add to user_images
+        for user_id in users {
+            if let Some(image_data) = cloned_image_data.pop() {
+                insert_into(user_images::table)
+                    .values((user_images::user_id.eq(user_id), user_images::image_id.eq(image_data.hash)))
+                    .execute(conn)
+                    .map_err(SimpleDatabaseError::from)?;
+            } else {
+                break; // Break the loop if there are no more images to assign
+            }
+        }
+        Ok(())
+    })
+    .await;
+}
+
+async fn seed_albums(db: Data<Database>){
+    let _ = database::open(db, move |conn| {
+        // Get one user
+        let user_id = users::table
+            .select(users::id)
+            .first::<Uuid>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        //Create one album for the user
+        let new_album = NewAlbum {
+            owner_id: user_id,
+            name: "My Album".to_owned(),
+            tags: vec!["tag1".to_owned(), "tag2".to_owned()],
+        };
+
+        insert_into(albums::table)
+            .values(new_album)
+            .execute(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        // Get the image id of the user
+        let image_id = user_images::table
+            .select(user_images::id)
+            .filter(user_images::user_id.eq(user_id))
+            .first::<Uuid>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+        // Get the album id of the user
+        let album_id = albums::table
+            .select(albums::id)
+            .first::<Uuid>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+        // Add image to album
+        insert_into(album_images::table)
+            .values((album_images::album_id.eq(album_id), album_images::image_id.eq(image_id)))
+            .execute(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        //shared album with another user
+        let new_user_id = users::table
+            .select(users::id)
+            .filter(users::id.ne(user_id))
+            .first::<Uuid>(conn)
+            .map_err(SimpleDatabaseError::from)?;
+
+        insert_into(shared_albums::table)
+            .values((shared_albums::album_id.eq(album_id), shared_albums::user_id.eq(new_user_id)))
             .execute(conn)
             .map_err(SimpleDatabaseError::from)?;
         Ok(())
@@ -162,12 +242,18 @@ async fn main() {
         std::process::exit(1);
     }));
 
-    //seed_users(database).await;
+    println!("Seeding database...");
+    println!("Seeding users...");
+    seed_users(database.clone()).await;
 
+    println!("Seeding images...");
     let image_storage =
         web::Data::from(Arc::new(LocalImageStorage::new("storage")) as Arc<dyn ImageStorage>);
     let image_data = seed_images(image_storage).await;
-    insert_image_data(database, image_data).await;
+    insert_image_data(database.clone(), image_data).await;
+
+    println!("Seeding albums...");
+    seed_albums(database.clone()).await;
 
     println!("Seeding complete!");
 }
