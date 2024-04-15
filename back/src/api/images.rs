@@ -351,7 +351,7 @@ pub async fn get_images(
             status = StatusCode::UNSUPPORTED_MEDIA_TYPE,
             description = "Unsupported image format",
             body = ApiError,
-            example = json!(ApiError::unsupported_image_type()),
+            example = json!(ApiError::unsupported_image_type("image/apng")),
             content_type = "application/json"
         ),
     ),
@@ -390,10 +390,11 @@ pub async fn upload_image(
         .await?
         .ok_or_else(ApiError::missing_image_payload)?;
 
-    let image_type = image_payload
-        .content_type()
-        .and_then(|content_type| ImageType::from_mime(content_type.essence_str()))
-        .ok_or_else(ApiError::unsupported_image_type)?;
+    let mime = image_payload.content_type().map(|mime| mime.essence_str());
+
+    let image_type = mime
+        .and_then(ImageType::from_mime)
+        .ok_or_else(|| ApiError::unsupported_image_type(mime.unwrap_or("(none)")))?;
 
     // wrap multipart errors as IO errors to pass them to the StreamReader
     let image_payload = image_payload.map_err(|error| {

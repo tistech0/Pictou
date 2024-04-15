@@ -137,7 +137,7 @@ impl ApiError {
         )
     }
 
-    pub fn unsupported_image_type() -> Self {
+    pub fn unsupported_image_type(mime: impl AsRef<str>) -> Self {
         let all_types = ImageType::ALL
             .iter()
             .map(|t| t.to_string())
@@ -146,7 +146,10 @@ impl ApiError {
         ApiError::new(
             StatusCode::BAD_REQUEST,
             ApiErrorCode::UnsupportedImageType,
-            format!("Unsupported image type: supported types are {all_types}"),
+            format!(
+                "Unsupported image type {:?}: supported types are {all_types}",
+                mime.as_ref()
+            ),
         )
     }
 
