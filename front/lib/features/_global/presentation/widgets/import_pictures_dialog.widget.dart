@@ -3,6 +3,7 @@ import 'package:front/core/config/albumprovider.dart';
 import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
 import 'package:front/core/domain/entities/album.entity.dart';
+import 'package:front/core/domain/usecase/upload_images.use_case.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:dio/dio.dart';
@@ -20,55 +21,35 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
   final ImagePicker _picker = ImagePicker();
   AlbumEntity? _selectedAlbum;
 
+  UploadImagesUseCase? _uploadImagesUseCase;
+
   @override
   void initState() {
     super.initState();
+    initializeUploadImagesUseCase();
+  }
+
+  void initializeUploadImagesUseCase() {
+    final imagesProvider = Provider.of<ImagesProvider>(context, listen: false);
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final accessToken = userProvider.user?.accessToken;
+
+    if (accessToken != null) {
+      _uploadImagesUseCase = UploadImagesUseCase(
+        imagesProvider: imagesProvider,
+        albumProvider: albumProvider,
+        accessToken: accessToken,
+        onSuccess: () => Navigator.of(context).pop(),
+      );
+    }
   }
 
   Future<void> _uploadImages(List<XFile> images) async {
-    final imagesProvider = Provider.of<ImagesProvider>(context, listen: false);
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final accessToken = userProvider.user?.accessToken;
-    var errorOccurred = false;
-
-    for (var imageFile in images) {
-      try {
-        final image = await MultipartFile.fromFile(imageFile.path,
-            filename: path.basename(imageFile.path),
-            contentType: MediaType(
-                'image', path.extension(imageFile.path).substring(1)));
-
-        final uploadResponse =
-            await imagesProvider.uploadImage(image, accessToken!);
-        if (uploadResponse == null) {
-          errorOccurred = true;
-          print('Échec du téléchargement de l\'image.');
-          continue;
-        }
-
-        if (_selectedAlbum == null) {
-          errorOccurred = true;
-          print('Album non sélectionné.');
-          continue;
-        }
-
-        await Provider.of<AlbumProvider>(context, listen: false)
-            .addImageToAlbum(
-                _selectedAlbum!.id, uploadResponse.id, accessToken);
-      } catch (e) {
-        errorOccurred = true;
-        print(
-            'Exception lors du téléchargement ou de l\'ajout de l\'image: $e');
-      }
-    }
-
-    if (!errorOccurred) {
-      Navigator.of(context).pop();
-      print(
-          'Toutes les images ont été téléchargées et ajoutées à l\'album avec succès.');
+    if (_uploadImagesUseCase != null && images.isNotEmpty) {
+      await _uploadImagesUseCase!.call(_selectedAlbum, images);
     } else {
-      print(
-          'Certaines images n\'ont pas pu être téléchargées ou ajoutées à l\'album.');
+      print("Aucune image sélectionnée ou problème de configuration.");
     }
   }
 
