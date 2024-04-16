@@ -61,6 +61,7 @@ pub trait ImageStorage: Send + Sync {
 pub enum StoredImageKind {
     Original,
     CompressedJpegXl,
+    JpegThumbnail(u32),
 }
 
 #[repr(transparent)]

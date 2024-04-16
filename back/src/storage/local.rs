@@ -63,6 +63,9 @@ impl LocalImageStorage {
         match kind {
             StoredImageKind::Original => path.push("original"),
             StoredImageKind::CompressedJpegXl => path.push("compressed.jxl"),
+            StoredImageKind::JpegThumbnail(size) => {
+                path.push(format!("thumbnail-{}x{}.jpg", size, size))
+            }
         }
 
         path

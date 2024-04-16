@@ -5,6 +5,7 @@ use std::{
     pin::Pin,
 };
 
+use crate::thumbnail::load_thumbnail;
 use crate::{
     api::{
         image_not_found_example, image_payload_too_large_example, json_payload_error_example,
@@ -36,25 +37,16 @@ use super::{process_tags, Binary};
 
 const CONTEXT_PATH: &str = "/images";
 
-#[derive(Clone, Copy, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum ImageQuality {
-    Low,
-    Medium,
-    High,
-}
-
 #[allow(dead_code)]
 #[derive(Deserialize)]
 pub struct ImageQuery {
-    quality: Option<ImageQuality>,
+    thumbnail_size: Option<u32>,
 }
 
 #[derive(Deserialize)]
 pub struct ImagesQuery {
     limit: Option<u32>,
     offset: Option<u32>,
-    quality: Option<ImageQuality>,
     tags: Option<String>,
 }
 
@@ -127,11 +119,10 @@ struct NewUserImage {
             example = "e58ed763-928c-4155-bee9-fdbaaadc15f3"
         ),
         (
-            "quality" = Option<ImageQuality>,
+            "thumbnail_size" = Option<u32>,
             Query,
-            description = "Image quality",
-            example = "Low"
-        )
+            description = "Size of the thumbnail to return (in pixels). If not provided (or 0), the original image is returned. The size is rounded to the upper multiple of 64.",
+            example = 0)
     ),
     responses(
         (
@@ -181,9 +172,7 @@ pub async fn get_image(
     let user_id = auth.user_id;
     let img_id = img_id.into_inner();
 
-    let _ = query; // FIXME: image quality is ignored for now
-
-    let (hash, mime_type) = database::open(db, move |conn| {
+    let (hash, original_mime_type, width, height) = database::open(db, move |conn| {
         use crate::schema::{stored_images, user_images};
         use diesel::prelude::*;
 
@@ -194,22 +183,50 @@ pub async fn get_image(
                     .eq(img_id)
                     .and(user_images::user_id.eq(user_id)),
             )
-            .select((stored_images::hash, stored_images::orignal_mime_type))
-            .get_result::<(ImageHash, String)>(conn)
+            .select((
+                stored_images::hash,
+                stored_images::orignal_mime_type,
+                stored_images::width,
+                stored_images::height,
+            ))
+            .get_result::<(ImageHash, String, i64, i64)>(conn)
             .map_err(SimpleDatabaseError::from)
     })
     .await?;
 
-    debug!(%hash, mime_type, "opening image for reading");
-    let image_source = image_storage
-        .load(hash, StoredImageKind::Original)
+    debug!(%hash, original_mime_type, "opening image for reading");
+    // Check if the client wants a thumbnail
+    let is_thumbnail = query.thumbnail_size.is_some() && query.thumbnail_size.unwrap() > 0;
+    // Load the original image if the client didn't request a thumbnail
+    let image_source_res = if !is_thumbnail {
+        image_storage.load(hash, StoredImageKind::Original).await
+    } else {
+        // Load the thumbnail, creating it if it doesn't exist
+        // The size of the thumbnail is rounded up to the next multiple of 64 and cannot be larger than the original image
+        load_thumbnail(
+            image_storage,
+            hash,
+            query
+                .thumbnail_size
+                .unwrap()
+                .min(width as u32)
+                .min(height as u32),
+        )
         .await
-        .map_err(|error| {
-            error!(%hash, error = &error as &dyn StdError, "failed to load image from storage");
-            ErrorInternalServerError("")
-        })?;
+    };
+    // Mimetype of thumbnail is always jpeg
+    let mime_type: &str = if is_thumbnail {
+        "image/jpeg"
+    } else {
+        &original_mime_type
+    };
+    // Convert the error to an actix error
+    let image_source = image_source_res.map_err(|error| {
+        error!(%hash, error = &error as &dyn StdError, "failed to load image from storage");
+        ErrorInternalServerError("")
+    })?;
+    // Create a stream from the image source and return it with the appropriate mime type
     let image_stream = ReaderStream::new(image_source);
-
     Ok(HttpResponse::Ok()
         .content_type(mime_type)
         .streaming(image_stream))
@@ -233,12 +250,6 @@ pub async fn get_image(
             Query,
             description = "Offset of the query in the image list to return",
             example = 0
-        ),
-        (
-            "quality" = Option<ImageQuality>,
-            Query,
-            description = "Image quality",
-            example = "low"
         ),
         (
             "tags" = Option<String>,
@@ -286,7 +297,6 @@ pub async fn get_images(
         .unwrap_or(app_cfg.images_query_default_limit)
         .min(app_cfg.images_query_max_limit);
     let offset = query.offset.unwrap_or(0);
-    let _quality = query.quality.unwrap_or(ImageQuality::Medium); // FIXME: image quality is ignored for now
 
     let images: Vec<ImageMetaData> = database::open(db, move |conn| {
         use crate::schema::{album_images, shared_albums, user_images, users};

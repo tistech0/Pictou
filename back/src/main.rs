@@ -23,6 +23,7 @@ mod log;
 mod openapi;
 mod schema;
 mod storage;
+mod thumbnail;
 
 use crate::{
     auth::{AuthContext, OAuth2Clients},
