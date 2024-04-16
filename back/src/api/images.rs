@@ -5,7 +5,7 @@ use std::{
     pin::Pin,
 };
 
-use crate::thumbnail::load_thumbnail;
+use crate::image::load_thumbnail;
 use crate::{
     api::{
         image_not_found_example, image_payload_too_large_example, json_payload_error_example,
