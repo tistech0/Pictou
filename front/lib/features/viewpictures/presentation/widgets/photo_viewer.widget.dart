@@ -96,11 +96,13 @@ class _PhotoViewerState extends State<PhotoViewer> {
                   final Response<Album> response = await albumApi.getAlbum(
                     id: widget.albumId,
                     headers: {
-                      "Authorization": "Bearer ${userProvider.user?.accessToken}",
+                      "Authorization": "Bearer ${userProvider.user
+                          ?.accessToken}",
                     },
                   );
                   final Album? albumActual = response.data;
-                  final ImageMetaData? imageMetadata = albumActual?.images[_currentIndex];
+                  final ImageMetaData? imageMetadata = albumActual
+                      ?.images[_currentIndex];
                   showMetadataDialog(context, imageMetadata!);
                 },
               ),
@@ -111,4 +113,3 @@ class _PhotoViewerState extends State<PhotoViewer> {
     );
   }
 }
-
