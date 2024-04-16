@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:front/core/config/albumprovider.dart';
-import 'package:front/core/config/userprovider.dart';
-import 'package:front/features/home/presentation/screens/homepage.screen.dart';
-import 'package:front/features/login/presentation/screens/login.screen.dart';
-import 'package:front/features/settings/presentation/screens/setting.screen.dart';
-import 'package:front/features/viewpictures/presentation/screens/viewpictures.screen.dart';
-import 'package:front/core/config/themeprovider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:front/core/config/imagesprovider.dart';
 import 'package:provider/provider.dart';
-
+import 'package:pictouapi/pictouapi.dart'; // Assurez-vous que cette bibliothèque existe ou remplacez-la par celle que vous utilisez réellement.
+import 'core/config/albumprovider.dart';
+import 'core/config/userprovider.dart';
+import 'core/config/themeprovider.dart';
+import 'features/home/presentation/screens/homepage.screen.dart';
+import 'features/login/presentation/screens/login.screen.dart';
+import 'features/settings/presentation/screens/setting.screen.dart';
+import 'features/viewpictures/presentation/screens/viewpictures.screen.dart';
 import 'features/_global/presentation/widgets/splashscreen.widget.dart';
 
-void main() {
+Future<void> main() async {
+  // Load environment variables from .env file
+  await dotenv.load(fileName: ".env");
+
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -21,14 +27,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AlbumProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(
-          create: (_) => UserProvider(null),
-        ),
+            create: (_) => AlbumProvider(
+                  Pictouapi(),
+                  serializers,
+                )),
+        ChangeNotifierProvider(
+            create: (_) => ImagesProvider(
+                  Pictouapi(),
+                  serializers,
+                )),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider(null)),
       ],
       child: Consumer<ThemeProvider>(
-        // Use Consumer to access ThemeProvider
         builder: (context, themeProvider, child) {
           return MaterialApp(
             theme: ThemeData(
@@ -50,11 +62,9 @@ class MyApp extends StatelessWidget {
             themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
             routes: {
               '/': (context) => const SplashScreen(),
-              '/login': (context) => LoginScreen(),
+              '/login': (context) => const LoginScreen(),
               '/home': (context) => const HomePage(),
-              '/view-picture': (context) => const ViewPictures(
-                    albumId: '',
-                  ),
+              '/view-picture': (context) => const ViewPicture(albumId: ''),
               '/settings': (context) => const Settings(),
             },
           );

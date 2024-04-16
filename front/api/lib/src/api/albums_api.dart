@@ -7,11 +7,11 @@ import 'dart:async';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-import 'package:pictou_api/src/api_util.dart';
-import 'package:pictou_api/src/model/album.dart';
-import 'package:pictou_api/src/model/album_list.dart';
-import 'package:pictou_api/src/model/album_post.dart';
-import 'package:pictou_api/src/model/api_error.dart';
+import 'package:pictouapi/src/api_util.dart';
+import 'package:pictouapi/src/model/album.dart';
+import 'package:pictouapi/src/model/album_list.dart';
+import 'package:pictouapi/src/model/album_post.dart';
+import 'package:pictouapi/src/model/api_error.dart';
 
 class AlbumsApi {
   final Dio _dio;

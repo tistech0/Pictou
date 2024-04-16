@@ -3,7 +3,7 @@
 //
 
 // ignore_for_file: unused_element
-import 'package:pictou_api/src/model/api_error_code.dart';
+import 'package:pictouapi/src/model/api_error_code.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 

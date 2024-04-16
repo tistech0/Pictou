@@ -7,11 +7,11 @@ import 'dart:async';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-import 'package:pictou_api/src/api_util.dart';
-import 'package:pictou_api/src/model/api_error.dart';
-import 'package:pictou_api/src/model/auth_error.dart';
-import 'package:pictou_api/src/model/authentication_response.dart';
-import 'package:pictou_api/src/model/refresh_token_params.dart';
+import 'package:pictouapi/src/api_util.dart';
+import 'package:pictouapi/src/model/api_error.dart';
+import 'package:pictouapi/src/model/auth_error.dart';
+import 'package:pictouapi/src/model/authentication_response.dart';
+import 'package:pictouapi/src/model/refresh_token_params.dart';
 
 class AuthApi {
   final Dio _dio;

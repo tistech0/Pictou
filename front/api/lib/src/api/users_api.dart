@@ -7,10 +7,10 @@ import 'dart:async';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-import 'package:pictou_api/src/model/api_error.dart';
-import 'package:pictou_api/src/model/user.dart';
-import 'package:pictou_api/src/model/user_list.dart';
-import 'package:pictou_api/src/model/user_post.dart';
+import 'package:pictouapi/src/model/api_error.dart';
+import 'package:pictouapi/src/model/user.dart';
+import 'package:pictouapi/src/model/user_list.dart';
+import 'package:pictouapi/src/model/user_post.dart';
 
 class UsersApi {
   final Dio _dio;

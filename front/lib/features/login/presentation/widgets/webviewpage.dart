@@ -17,6 +17,20 @@ class WebViewPage extends StatefulWidget {
 class _WebViewPageState extends State<WebViewPage> {
   late WebViewController _controller;
 
+  Future<UserEntity> parseAndDecodeUser(String jsonStr) async {
+    final jsonString = jsonStr
+        .substring(
+            1,
+            jsonStr.length -
+                1) // Enlève les guillemets en trop autour de la chaîne
+        .replaceAll(r'\"',
+            '"'); // Convertit les séquences d'échappement en guillemets normaux
+
+    final decodedJson = json.decode(jsonString);
+    final connectedUser = UserEntity.fromJson(decodedJson);
+    return connectedUser;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,20 +45,12 @@ class _WebViewPageState extends State<WebViewPage> {
             _controller = webViewController;
           },
           onPageFinished: (String url) async {
-            if (url
-                .startsWith('http://localhost:8000/api/auth/callback/google')) {
+            final baseUrl =
+                'http://localhost:8000/api'; // Utilisez votre propre baseUrl
+            if (url.startsWith('$baseUrl/auth/callback/google')) {
               final jsonStr = await _controller.runJavascriptReturningResult(
                   "window.JSON.stringify(document.body.innerText);");
-              final jsonString = jsonStr
-                  .substring(1, jsonStr.length - 1)
-                  .replaceAll(r'\"', '"');
-
-              final decodedJson = json.decode(jsonString);
-
-              final correctJson = json.encode(decodedJson);
-              final jsonData = json.decode(correctJson);
-              print(jsonData);
-              final connectedUser = UserEntity.fromJson(jsonData);
+              final connectedUser = await parseAndDecodeUser(jsonStr);
               print(connectedUser);
               Provider.of<UserProvider>(context, listen: false)
                   .setUser(connectedUser);

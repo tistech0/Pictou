@@ -3,7 +3,7 @@
 //
 
 import 'package:dio/dio.dart';
-import 'package:pictou_api/src/auth/auth.dart';
+import 'package:pictouapi/src/auth/auth.dart';
 
 class OAuthInterceptor extends AuthInterceptor {
   final Map<String, String> tokens = {};

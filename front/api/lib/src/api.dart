@@ -4,34 +4,38 @@
 
 import 'package:dio/dio.dart';
 import 'package:built_value/serializer.dart';
-import 'package:pictou_api/src/serializers.dart';
-import 'package:pictou_api/src/auth/api_key_auth.dart';
-import 'package:pictou_api/src/auth/basic_auth.dart';
-import 'package:pictou_api/src/auth/bearer_auth.dart';
-import 'package:pictou_api/src/auth/oauth.dart';
-import 'package:pictou_api/src/api/albums_api.dart';
-import 'package:pictou_api/src/api/auth_api.dart';
-import 'package:pictou_api/src/api/images_api.dart';
-import 'package:pictou_api/src/api/users_api.dart';
+import 'package:pictouapi/pictouapi.dart';
+import 'package:pictouapi/src/serializers.dart';
+import 'package:pictouapi/src/auth/api_key_auth.dart';
+import 'package:pictouapi/src/auth/basic_auth.dart';
+import 'package:pictouapi/src/auth/bearer_auth.dart';
+import 'package:pictouapi/src/auth/oauth.dart';
+import 'package:pictouapi/src/api/albums_api.dart';
+import 'package:pictouapi/src/api/auth_api.dart';
+import 'package:pictouapi/src/api/images_api.dart';
+import 'package:pictouapi/src/api/users_api.dart';
 
-class PictouApi {
-  static const String basePath = r'/api';
-
+class Pictouapi {
   final Dio dio;
   final Serializers serializers;
 
-  PictouApi({
+  Pictouapi({
     Dio? dio,
     Serializers? serializers,
-    String? basePathOverride,
+    String?
+        basePathOverride, // Utilisez ce paramètre pour passer l'URL de base complète
     List<Interceptor>? interceptors,
   })  : this.serializers = serializers ?? standardSerializers,
         this.dio = dio ??
             Dio(BaseOptions(
-              baseUrl: basePathOverride ?? basePath,
+              baseUrl: basePathOverride ??
+                  'https://66b6-163-5-23-29.ngrok-free.app/api', // URL par défaut pour le développement
               connectTimeout: const Duration(milliseconds: 5000),
               receiveTimeout: const Duration(milliseconds: 3000),
             )) {
+    // Configuration des intercepteurs...
+
+// Les autres méthodes
     if (interceptors == null) {
       this.dio.interceptors.addAll([
         OAuthInterceptor(),

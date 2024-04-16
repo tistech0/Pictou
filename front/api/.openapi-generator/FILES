@@ -24,7 +24,7 @@ doc/User.md
 doc/UserList.md
 doc/UserPost.md
 doc/UsersApi.md
-lib/pictou_api.dart
+lib/pictouapi.dart
 lib/src/api.dart
 lib/src/api/albums_api.dart
 lib/src/api/auth_api.dart

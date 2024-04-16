@@ -8,13 +8,13 @@ import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
 import 'dart:typed_data';
-import 'package:pictou_api/src/api_util.dart';
-import 'package:pictou_api/src/model/api_error.dart';
-import 'package:pictou_api/src/model/image_meta_data.dart';
-import 'package:pictou_api/src/model/image_patch.dart';
-import 'package:pictou_api/src/model/image_quality.dart';
-import 'package:pictou_api/src/model/image_upload_response.dart';
-import 'package:pictou_api/src/model/images_meta_data.dart';
+import 'package:pictouapi/src/api_util.dart';
+import 'package:pictouapi/src/model/api_error.dart';
+import 'package:pictouapi/src/model/image_meta_data.dart';
+import 'package:pictouapi/src/model/image_patch.dart';
+import 'package:pictouapi/src/model/image_quality.dart';
+import 'package:pictouapi/src/model/image_upload_response.dart';
+import 'package:pictouapi/src/model/images_meta_data.dart';
 
 class ImagesApi {
   final Dio _dio;
