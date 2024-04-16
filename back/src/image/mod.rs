@@ -148,6 +148,25 @@ impl DecodedImage {
     pub fn original_bytes(&self) -> &[u8] {
         &self.original_bytes
     }
+
+    fn crop_to_square(&self) -> DynamicImage {
+        let (width, height) = (self.inner.width(), self.inner.height());
+
+        // Calculate the size of the square
+        let size = width.min(height);
+
+        // Calculate the coordinates for cropping
+        let left = (width - size) / 2;
+        let top = (height - size) / 2;
+
+        // Crop the image to a square
+        self.inner.crop_imm(left, top, size, size)
+    }
+
+    pub fn square_thumbnail(self, size: u32) -> DynamicImage {
+        let cropped = self.crop_to_square();
+        cropped.thumbnail_exact(size, size)
+    }
 }
 
 /// **BLOCKING**: call in async with caution!
