@@ -7,6 +7,7 @@ import 'package:front/core/domain/usecase/upload_images.use_case.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+
 class ImportPicturesDialog extends StatefulWidget {
   const ImportPicturesDialog({super.key});
 
@@ -17,13 +18,26 @@ class ImportPicturesDialog extends StatefulWidget {
 class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
   final ImagePicker _picker = ImagePicker();
   AlbumEntity? _selectedAlbum;
-
+  final TextEditingController _tagsController = TextEditingController();
+  List<String> _tags = [];
   UploadImagesUseCase? _uploadImagesUseCase;
+  List<XFile>? _selectedImages;
 
   @override
   void initState() {
     super.initState();
     initializeUploadImagesUseCase();
+  }
+
+  void _validateTags() {
+    final String input = _tagsController.text.trim();
+    if (input.isNotEmpty) {
+      final List<String> newTags = input.split(' ');
+      setState(() {
+        _tags.addAll(newTags);
+        _tagsController.clear();
+      });
+    }
   }
 
   void initializeUploadImagesUseCase() {
@@ -50,7 +64,7 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
 
   Future<void> _uploadImages(List<XFile> images) async {
     if (_uploadImagesUseCase != null && images.isNotEmpty) {
-      await _uploadImagesUseCase!.call(_selectedAlbum, images);
+      await _uploadImagesUseCase!.call(_selectedAlbum, images, _tags);
     } else {
       print("Aucune image sélectionnée ou problème de configuration.");
     }
@@ -85,10 +99,12 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () async {
-              final List<XFile> images = await _picker.pickMultiImage();
-              if (images.isNotEmpty) {
+              final List<XFile>? images = await _picker.pickMultiImage();
+              if (images != null && images.isNotEmpty) {
                 print("${images.length} images picked.");
-                await _uploadImages(images);
+                setState(() {
+                  _selectedImages = images;
+                });
               } else {
                 print("No images selected.");
               }
@@ -98,6 +114,23 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
             ),
             child: const Text('Importer des Photos'),
           ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _tagsController,
+            decoration: const InputDecoration(
+              hintText: "Entrez les tags (séparés par des espaces)",
+            ),
+          ),
+          ElevatedButton(
+            onPressed: _validateTags,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.secondary,
+            ),
+            child: const Text('Ajouter des tags'),
+          ),
+          const SizedBox(height: 20),
+          if (_tags.isNotEmpty)
+            for (var tag in _tags) Text(tag),
         ],
       ),
       actions: <Widget>[
@@ -108,6 +141,19 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
             foregroundColor: Colors.white,
             backgroundColor: Colors.red,
           ),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            if (_selectedImages != null && _selectedImages!.isNotEmpty) {
+              await _uploadImages(_selectedImages!);
+            } else {
+              print("No images selected.");
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+          ),
+          child: const Text('Upload'),
         ),
       ],
     );

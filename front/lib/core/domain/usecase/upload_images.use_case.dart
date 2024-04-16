@@ -7,12 +7,14 @@ import 'package:front/core/domain/entities/album.entity.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:http_parser/http_parser.dart';
+import 'package:pictouapi/pictouapi.dart';
 
 class UploadImagesUseCase {
   final ImagesProvider imagesProvider;
   final AlbumProvider albumProvider;
   final String accessToken;
   final VoidCallback onSuccess;
+  final imageApi = Pictouapi().getImagesApi();
 
   UploadImagesUseCase({
     required this.imagesProvider,
@@ -21,7 +23,23 @@ class UploadImagesUseCase {
     required this.onSuccess,
   });
 
-  Future<void> call(AlbumEntity? selectedAlbum, List<XFile> images) async {
+  Future<void> _editImageMetadata(String imageId, List<String> tags) async {
+    final imagePatch = ImagePatch((b) => b
+      ..tags.replace(tags)
+    );
+
+    try {
+      await imageApi.editImage(
+        id: imageId,
+        imagePatch: imagePatch,
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+    } catch (e) {
+      print('Exception lors de la modification des métadonnées de l\'image: $e');
+    }
+  }
+
+  Future<void> call(AlbumEntity? selectedAlbum, List<XFile> images, List<String> tag) async {
     if (selectedAlbum == null) {
       throw Exception("Album non sélectionné.");
     }
@@ -45,6 +63,7 @@ class UploadImagesUseCase {
 
         await albumProvider.addImageToAlbum(
             selectedAlbum.id, uploadResponse.id, accessToken);
+        await _editImageMetadata(uploadResponse.id, tag);
       } catch (e) {
         errorOccurred = true;
         print(

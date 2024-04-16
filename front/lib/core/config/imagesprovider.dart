@@ -23,17 +23,17 @@ class ImagesProvider with ChangeNotifier {
   List<ImageEntity> _images = [];
   List<ImageEntity> get images => _images;
 
-  Future<List<Uint8List>> fetchImages(String accessToken, String albumId) async {
+  Stream<List<Uint8List>> fetchImagesAlbum(String accessToken, String albumId, ImageQuality quality) async* {
     try {
       final response = await _albumsApi.getAlbum(id: albumId, headers: {"Authorization": "Bearer $accessToken"});
       if (response.statusCode == 200 && response.data != null) {
         final Album? album = response.data;
         final BuiltList<ImageMetaData>? images = album?.images;
         if (images != null) {
-          final List<Uint8List> downloadedImages = [];
+          List<Uint8List> downloadedImages = [];
           for (var image in images) {
             print('Image ID: ${image.id}');
-            final response = await _imagesApi.getImage(id: image.id, quality: ImageQuality.low, headers: {
+            final response = await _imagesApi.getImage(id: image.id, quality: quality, headers: {
               "Authorization": "Bearer $accessToken"
             });
             if (response.statusCode == 200 && response.data != null) {
@@ -50,17 +50,50 @@ class ImagesProvider with ChangeNotifier {
                     : Uint8List.fromList(imglib.encodePng(decodedImage));
                 // Store the encoded image data in a list
                 downloadedImages.add(encodedImage);
+                yield downloadedImages; // Yield the current state of the downloadedImages each time a new image is added
               }
             }
           }
-          return downloadedImages;
         }
       }
     } catch (e) {
       print("Erreur lors de la récupération des images: $e");
     }
-    return [];
   }
+
+  Future<Uint8List?> fetchFirstImageOfAlbum(String accessToken, String albumId, ImageQuality quality) async {
+    try {
+      final response = await _albumsApi.getAlbum(id: albumId, headers: {"Authorization": "Bearer $accessToken"});
+      if (response.statusCode == 200 && response.data != null) {
+        final Album? album = response.data;
+        final BuiltList<ImageMetaData>? images = album?.images;
+        if (images != null && images.length > 0) {
+          final ImageMetaData firstImage = images.first;
+          final response = await _imagesApi.getImage(id: firstImage.id, quality: quality, headers: {
+            "Authorization": "Bearer $accessToken"
+          });
+          if (response.statusCode == 200 && response.data != null) {
+            final Uint8List? imageData = response.data;
+            // Decode the image data using the image package
+            final imglib.Image? decodedImage = imglib.decodeImage(imageData!);
+            if (decodedImage != null) {
+              // Encode the decoded image data as a PNG or JPEG depending on the original format
+              final String? contentType = response.headers.map['content-type']?.first;
+              final String format = contentType?.split('/').last ?? '';
+              final Uint8List encodedImage = format == 'jpeg'
+                  ? Uint8List.fromList(imglib.encodeJpg(decodedImage))
+                  : Uint8List.fromList(imglib.encodePng(decodedImage));
+              return encodedImage;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print("Erreur lors de la récupération de la première image de l'album: $e");
+    }
+    return null;
+  }
+
 
 
   Future<ImageUploadResponse?> uploadImage(

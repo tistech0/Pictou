@@ -19,12 +19,26 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
   final ImagePicker _picker = ImagePicker();
   List<XFile>? _images = [];
   final TextEditingController _albumNameController = TextEditingController();
+  final TextEditingController _tagsController = TextEditingController();
+  List<String> _tags = [];
 
   @override
   void dispose() {
     _albumNameController.dispose();
     super.dispose();
   }
+
+  void _validateTags() {
+    final String input = _tagsController.text.trim();
+    if (input.isNotEmpty) {
+      final List<String> newTags = input.split(',');
+      setState(() {
+        _tags.addAll(newTags);
+        _tagsController.clear();
+      });
+    }
+  }
+
 
   Future<void> createAlbumAndUploadImages() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -40,7 +54,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
     // Création de l'album
     final albumId = await albumProvider.createAlbum(
       _albumNameController.text,
-      ["tag"],
+      _tags,
       [], // Initialement pas d'images
       accessToken,
     );
@@ -104,6 +118,23 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
               ),
               child: const Text('Importer des Photos'),
             ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _tagsController,
+              decoration: const InputDecoration(
+                hintText: "Entrez les tags (séparés par des virgules)",
+              ),
+            ),
+            ElevatedButton(
+              onPressed: _validateTags,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+              ),
+              child: const Text('Ajouter des tags'),
+            ),
+            const SizedBox(height: 20),
+            if (_tags.isNotEmpty)
+              for (var tag in _tags) Text(tag),
             const SizedBox(height: 20),
             if (_images != null)
               for (var image in _images!) Text(image.name),

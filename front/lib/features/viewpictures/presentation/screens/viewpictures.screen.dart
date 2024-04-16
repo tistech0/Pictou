@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:pictouapi/pictouapi.dart';
 import 'package:front/core/domain/usecase/shared_album.use_case.dart';
 import 'package:front/features/viewpictures/presentation/widgets/shared_album.widget.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +11,8 @@ import 'package:front/core/config/albumprovider.dart';
 import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
 import 'package:front/features/_global/presentation/widgets/bottom_bar.widget.dart';
+
+import '../widgets/photo_viewer.widget.dart';
 
 class ViewPicture extends StatefulWidget {
   final String albumId;
@@ -19,7 +24,8 @@ class ViewPicture extends StatefulWidget {
 }
 
 class _ViewPicturesState extends State<ViewPicture> {
-  late Future<List<Uint8List>> imageAlbumFuture;
+  Stream<List<Uint8List>>? imageAlbumStream;
+  List<String> _tags = [];
 
   @override
   void initState() {
@@ -47,18 +53,22 @@ class _ViewPicturesState extends State<ViewPicture> {
   Future<void> _loadPicture() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final imageProvider = Provider.of<ImagesProvider>(context, listen: false);
-    if (userProvider.user?.accessToken != null) {
-      imageAlbumFuture = imageProvider.fetchImages(
-          userProvider.user!.accessToken!, widget.albumId);
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+    final album = albumProvider.albums.firstWhereOrNull((album) => album.id == widget.albumId);
+
+    if (userProvider.user?.accessToken != null && album != null) {
+      _tags = album.tags;
+      imageAlbumStream = imageProvider.fetchImagesAlbum(userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
     final albumProvider = Provider.of<AlbumProvider>(context);
-    final album = albumProvider.albums
-        .firstWhereOrNull((album) => album.id == widget.albumId);
+    final album =
+    albumProvider.albums.firstWhereOrNull((album) => album.id == widget.albumId);
 
     if (album == null) {
       return Scaffold(
@@ -83,45 +93,72 @@ class _ViewPicturesState extends State<ViewPicture> {
           ),
         ],
       ),
-      body: FutureBuilder<List<Uint8List>>(
-        future: imageAlbumFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(
-                child: CircularProgressIndicator(
-              color: Colors.black,
-            ));
-          }
-          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-            return GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
+      body: Column (
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_tags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _tags.map((tag) => Chip(label: Text(tag))).toList(),
               ),
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                return Image.memory(snapshot.data![index], fit: BoxFit.cover);
+            ),
+          Expanded(
+            child: StreamBuilder<List<Uint8List>>(
+              stream: imageAlbumStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  final imageAlbum = snapshot.data!;
+                  return GridView.count(
+                    crossAxisCount: 3,
+                    padding: const EdgeInsets.all(16),
+                    children: List.generate(imageAlbum.length, (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return PhotoViewer(
+                                imageList: imageAlbum,
+                                initialIndex: index,
+                              );
+                            },
+                          );
+                        },
+                        child: Image.memory(
+                          imageAlbum[index],
+                          fit: BoxFit.cover,
+                        ),
+                      );
+                    }),
+                  );
+                } else if (snapshot.hasError) {
+                  // Gère les erreurs lors du chargement des images
+                  return Center(
+                      child: Text(
+                          'Erreur lors du chargement des images: ${snapshot.error}'));
+                } else {
+                  // Fallback pour tout autre cas non traité
+                  return const Center(child: Text("Quelque chose s'est mal passé"));
+                }
               },
-            );
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Erreur: ${snapshot.error}'));
-          } else {
-            return const Center(child: Text('Aucune image dans cet album.'));
-          }
-        },
-      ),
+            ),
+        ),
+      ],
+    ),
       bottomNavigationBar: BottomBarWidget(
         selectedAlbum: album,
         accessToken: userProvider.user?.accessToken ?? '',
         onSuccess: () {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content:
-                  Text('Les images ont été ajoutées avec succès à l\'album')));
+              Text('Les images ont été ajoutées avec succès à l\'album')));
           _loadPicture();
         },
       ),
-    );
+    )
   }
 
   void _confirmDeletion(BuildContext context, AlbumProvider albumProvider) {

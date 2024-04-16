@@ -5,7 +5,8 @@ import 'package:front/features/home/presentation/widgets/triple_view_container.w
 import 'package:provider/provider.dart';
 
 class RefreshableAlbumCarouselWidget extends StatefulWidget {
-  const RefreshableAlbumCarouselWidget({super.key});
+  final bool isShared;
+  const RefreshableAlbumCarouselWidget({super.key, required this.isShared});
 
   @override
   State<RefreshableAlbumCarouselWidget> createState() =>
@@ -32,11 +33,11 @@ class _RefreshableAlbumCarouselWidgetState
     return RefreshIndicator(
       color: Colors.blue,
       onRefresh: _refreshData,
-      child: const SingleChildScrollView(
+      child: SingleChildScrollView(
         physics: AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
-            AlbumCarouselWidget(),
+            AlbumCarouselWidget(isShared: widget.isShared),
           ],
         ),
       ),
