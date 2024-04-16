@@ -20,6 +20,7 @@ use actix_web::{
     middleware::{ErrorHandlers, NormalizePath},
     web, App, HttpServer,
 };
+use tokio::sync::Notify;
 use tracing::info;
 use tracing_actix_web::TracingLogger;
 use utoipa::OpenApi;
@@ -33,7 +34,10 @@ use crate::{
     storage::{ImageStorage, LocalImageStorage},
 };
 
-pub async fn start_server(app_cfg: web::Data<AppConfiguration>) -> anyhow::Result<()> {
+pub async fn start_server(
+    app_cfg: web::Data<AppConfiguration>,
+    server_started: Arc<Notify>,
+) -> anyhow::Result<()> {
     let address = app_cfg.address.to_owned();
     let port = app_cfg.port;
     let database = web::Data::new(Database::new(&app_cfg)?);
@@ -81,6 +85,8 @@ pub async fn start_server(app_cfg: web::Data<AppConfiguration>) -> anyhow::Resul
     .bind((address.clone(), port))?;
 
     info!(address, port, "starting Pictou server");
+    server_started.notify_waiters();
+
     server.run().await?;
     info!(address, port, "server stopped");
     Ok(())

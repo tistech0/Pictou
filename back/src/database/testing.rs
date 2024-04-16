@@ -107,6 +107,12 @@ impl TestingDatabase {
     }
 }
 
+impl ToDatabasePointer for TestingDatabase {
+    fn to_database_ptr(&self) -> Arc<Database> {
+        self.0.clone()
+    }
+}
+
 /// Runs all pending migrations on the given database.
 pub async fn run_migrations<S>(
     db: impl ToDatabasePointer + Send + 'static,

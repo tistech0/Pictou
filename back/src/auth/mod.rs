@@ -15,10 +15,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
-    auth::{
-        error::AuthErrorKind,
-        oauth2_client::{ClientType, DynOAuth2Client},
-    },
+    auth::{error::AuthErrorKind, oauth2_client::DynOAuth2Client},
     config::AppConfiguration,
 };
 
@@ -27,7 +24,7 @@ pub mod google;
 mod oauth2_client;
 pub mod routes;
 
-pub use oauth2_client::OAuth2Clients;
+pub use oauth2_client::{ClientType, OAuth2Clients};
 pub use routes::configure;
 
 /// Sends a request to the OAuth2 provider to check if the user is still authorized.
@@ -69,27 +66,27 @@ pub struct RefreshTokenParams {
     refresh_token: String,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthenticationResponse {
     #[serde(flatten)]
-    user: PersistedUserInfo,
-    access_token: String,
+    pub user: PersistedUserInfo,
+    pub access_token: String,
     #[schema(value_type = String, format = "date-time")]
-    access_token_exp: OffsetDateTime,
+    pub access_token_exp: OffsetDateTime,
 }
 
-#[derive(Debug, Serialize, Selectable, Queryable, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, Selectable, Queryable, ToSchema)]
 #[diesel(table_name = crate::schema::users)]
 pub struct PersistedUserInfo {
     #[diesel(column_name = "id")]
-    user_id: Uuid,
-    email: String,
-    refresh_token: Option<String>,
+    pub user_id: Uuid,
+    pub email: String,
+    pub refresh_token: Option<String>,
     #[schema(value_type = String, format = "date-time")]
-    refresh_token_exp: OffsetDateTime,
-    name: Option<String>,
-    given_name: Option<String>,
-    family_name: Option<String>,
+    pub refresh_token_exp: OffsetDateTime,
+    pub name: Option<String>,
+    pub given_name: Option<String>,
+    pub family_name: Option<String>,
 }
 
 /// When present, this extractor ensures that the annotated route will require authentication.

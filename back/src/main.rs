@@ -1,8 +1,9 @@
-use std::io;
+use std::{io, sync::Arc};
 
 use actix_web::web;
 use anyhow::Context;
 use dotenv::dotenv;
+use tokio::sync::Notify;
 use tracing::debug;
 
 use pictou::{config::AppConfiguration, log};
@@ -16,7 +17,7 @@ async fn init() -> anyhow::Result<()> {
     let app_cfg = web::Data::from(AppConfiguration::from_env()?);
     debug!(?app_cfg, "loaded configuration from environment");
 
-    pictou::start_server(app_cfg).await
+    pictou::start_server(app_cfg, Arc::new(Notify::new())).await
 }
 
 #[actix_web::main]
