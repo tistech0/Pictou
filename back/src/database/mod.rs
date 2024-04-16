@@ -17,6 +17,13 @@ use tracing::{debug, error, info};
 
 use crate::config::AppConfiguration;
 
+#[cfg(feature = "testing-support")]
+mod testing;
+
+#[cfg(feature = "testing-support")]
+#[allow(unused_imports)]
+pub use testing::*;
+
 pub struct Database {
     pool: r2d2::Pool<ConnectionManager<PgConnection>>,
 }
@@ -42,15 +49,16 @@ impl Database {
     #[tracing::instrument(skip(app_cfg))]
     pub fn new(app_cfg: &AppConfiguration) -> DatabaseResult<Database> {
         let host = &app_cfg.postgres_host;
+        let port = app_cfg.postgres_port;
         let user = &app_cfg.postgres_user;
         let password = &app_cfg.postgres_password;
         let db = &app_cfg.postgres_db;
 
-        let database_url = Self::make_database_url(user, password, host, db);
+        let database_url = Self::make_database_url(user, password, host, port, db);
         let timeout = Duration::from_secs(5);
 
         info!(
-            database_url = Self::make_database_url(user, "REDACTED", host, db),
+            database_url = Self::make_database_url(user, "REDACTED", host, port, db),
             timeout_secs = timeout.as_secs(),
             "connecting to Postgres database"
         );
@@ -123,12 +131,13 @@ where
 }
 
 impl Database {
-    fn make_database_url(user: &str, password: &str, host: &str, db: &str) -> String {
+    fn make_database_url(user: &str, password: &str, host: &str, port: u16, db: &str) -> String {
         format!(
-            "postgres://{}:{}@{}:5432/{}",
+            "postgres://{}:{}@{}:{}/{}",
             urlencoding::encode(user),
             urlencoding::encode(password),
             urlencoding::encode(host),
+            port,
             urlencoding::encode(db)
         )
     }
