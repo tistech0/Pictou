@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:front/core/domain/usecase/shared_album.use_case.dart';
+import 'package:front/features/viewpictures/presentation/widgets/shared_album.widget.dart';
 import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
 import 'package:front/core/config/albumprovider.dart';
@@ -23,6 +25,23 @@ class _ViewPicturesState extends State<ViewPicture> {
   void initState() {
     super.initState();
     _loadPicture();
+  }
+
+  void _shareAlbum() {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+    ShareAlbumUseCase useCase = ShareAlbumUseCase(
+      albumProvider: albumProvider,
+      accessToken: userProvider.user!.accessToken!,
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => ShareAlbumDialog(
+        albumId: widget.albumId,
+        useCase: useCase,
+      ),
+    );
   }
 
   Future<void> _loadPicture() async {
@@ -55,7 +74,7 @@ class _ViewPicturesState extends State<ViewPicture> {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {
-              // Logique pour partager l'album
+              _shareAlbum();
             },
           ),
           IconButton(

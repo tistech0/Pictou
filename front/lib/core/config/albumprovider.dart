@@ -22,6 +22,7 @@ class AlbumProvider with ChangeNotifier {
         offset: 0,
         headers: {"Authorization": "Bearer $accessToken"},
       );
+      print(accessToken);
 
       if (response.statusCode == 200 && response.data != null) {
         print(response.data);
@@ -107,6 +108,46 @@ class AlbumProvider with ChangeNotifier {
       }
     } catch (e) {
       print("Exception lors de l'ajout de l'image à l'album: $e");
+    }
+  }
+
+  Future<void> addShared(
+      String albumId, String userId, String accessToken) async {
+    try {
+      var albumsApi = _pictouApi.getAlbumsApi();
+      final existingAlbum = _albums.firstWhere((album) => album.id == albumId);
+
+      if (existingAlbum == null) {
+        print("Album introuvable");
+        return;
+      }
+
+      final albumPost = AlbumPost((b) => b
+        // ..name = existingAlbum.name
+        // ..tags = ListBuilder(existingAlbum.tags)
+        // ..images = ListBuilder(existingAlbum.images.map((image) => image.id))
+        ..sharedWith = (ListBuilder(existingAlbum.sharedWith)..add(userId)));
+
+      final response = await albumsApi.editAlbum(
+        id: albumId,
+        albumPost: albumPost,
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+      print(albumPost);
+
+      if (response.statusCode == 200 && response.data != null) {
+        print("Modification de l'album réussie.");
+        // Mise à jour de l'album avec les nouvelles informations
+        final updatedAlbum = AlbumEntity.fromAlbumModel(response.data!);
+        _albums[_albums.indexWhere((album) => album.id == albumId)] =
+            updatedAlbum;
+        notifyListeners();
+      } else {
+        print(
+            "Échec de la modification de l'album avec status code: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Exception lors de la modification de l'album: $e");
     }
   }
 }
