@@ -2,6 +2,15 @@
 name = "picto-back"
 version = "0.1.0"
 edition = "2021"
+default-run = "main"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+[[bin]]
+name = "seed"
+path = "src/seed.rs"
 
 [features]
 default = ["testing-incompatible"]
@@ -60,7 +69,8 @@ image-backend = { version = "~0.25.0", package = "image", default-features = fal
     "jpeg",
     "gif",
 ] }
-md-5 = "0.10.6"
+md-5 = "^0.10.6"
+fake = "^2.9.2"
 jpegxl-rs = { version = "~0.10.2", features = ["image", "vendored"] }
 pyo3 = { version = "~0.21.1", features = ["auto-initialize"], optional = true }
 
