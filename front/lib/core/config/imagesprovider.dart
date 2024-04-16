@@ -61,6 +61,40 @@ class ImagesProvider with ChangeNotifier {
     }
   }
 
+  Future<Uint8List?> fetchFirstImageOfAlbum(String accessToken, String albumId, ImageQuality quality) async {
+    try {
+      final response = await _albumsApi.getAlbum(id: albumId, headers: {"Authorization": "Bearer $accessToken"});
+      if (response.statusCode == 200 && response.data != null) {
+        final Album? album = response.data;
+        final BuiltList<ImageMetaData>? images = album?.images;
+        if (images != null && images.length > 0) {
+          final ImageMetaData firstImage = images.first;
+          final response = await _imagesApi.getImage(id: firstImage.id, quality: quality, headers: {
+            "Authorization": "Bearer $accessToken"
+          });
+          if (response.statusCode == 200 && response.data != null) {
+            final Uint8List? imageData = response.data;
+            // Decode the image data using the image package
+            final imglib.Image? decodedImage = imglib.decodeImage(imageData!);
+            if (decodedImage != null) {
+              // Encode the decoded image data as a PNG or JPEG depending on the original format
+              final String? contentType = response.headers.map['content-type']?.first;
+              final String format = contentType?.split('/').last ?? '';
+              final Uint8List encodedImage = format == 'jpeg'
+                  ? Uint8List.fromList(imglib.encodeJpg(decodedImage))
+                  : Uint8List.fromList(imglib.encodePng(decodedImage));
+              return encodedImage;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print("Erreur lors de la récupération de la première image de l'album: $e");
+    }
+    return null;
+  }
+
+
 
   Future<ImageUploadResponse?> uploadImage(
       MultipartFile imageFile, String accessToken) async {

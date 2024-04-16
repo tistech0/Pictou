@@ -47,18 +47,18 @@ class _HomePageState extends State<HomePage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                RefreshableAlbumCarouselWidget(),
+                RefreshableAlbumCarouselWidget(isShared: false),
                 Padding(
                   padding: EdgeInsets.only(top: 40.0),
                   child: Text(
-                    'Custom Album',
+                    'Shared Album',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                RefreshableAlbumCarouselWidget(),
+                RefreshableAlbumCarouselWidget(isShared: true),
                 SizedBox(height: 40),
               ],
             ),
