@@ -39,7 +39,7 @@ class BottomBarWidget extends StatelessWidget {
         onSuccess: onSuccess,
       );
 
-      uploadImagesUseCase(selectedAlbum, images);
+      uploadImagesUseCase(selectedAlbum, images, []);
     }
 
     void openCamera() async {

@@ -17,7 +17,7 @@ import '../widgets/photo_viewer.widget.dart';
 class ViewPicture extends StatefulWidget {
   final String albumId;
 
-  const ViewPicture({Key? key, required this.albumId}) : super(key: key);
+  const ViewPicture({super.key, required this.albumId});
 
   @override
   _ViewPicturesState createState() => _ViewPicturesState();
@@ -54,21 +54,22 @@ class _ViewPicturesState extends State<ViewPicture> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final imageProvider = Provider.of<ImagesProvider>(context, listen: false);
     final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
-    final album = albumProvider.albums.firstWhereOrNull((album) => album.id == widget.albumId);
+    final album = albumProvider.albums
+        .firstWhereOrNull((album) => album.id == widget.albumId);
 
     if (userProvider.user?.accessToken != null && album != null) {
       _tags = album.tags;
-      imageAlbumStream = imageProvider.fetchImagesAlbum(userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
+      imageAlbumStream = imageProvider.fetchImagesAlbum(
+          userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
     final albumProvider = Provider.of<AlbumProvider>(context);
-    final album =
-    albumProvider.albums.firstWhereOrNull((album) => album.id == widget.albumId);
+    final album = albumProvider.albums
+        .firstWhereOrNull((album) => album.id == widget.albumId);
 
     if (album == null) {
       return Scaffold(
@@ -93,7 +94,7 @@ class _ViewPicturesState extends State<ViewPicture> {
           ),
         ],
       ),
-      body: Column (
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_tags.isNotEmpty)
@@ -141,24 +142,25 @@ class _ViewPicturesState extends State<ViewPicture> {
                           'Erreur lors du chargement des images: ${snapshot.error}'));
                 } else {
                   // Fallback pour tout autre cas non traité
-                  return const Center(child: Text("Quelque chose s'est mal passé"));
+                  return const Center(
+                      child: Text("Quelque chose s'est mal passé"));
                 }
               },
             ),
-        ),
-      ],
-    ),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomBarWidget(
         selectedAlbum: album,
         accessToken: userProvider.user?.accessToken ?? '',
         onSuccess: () {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content:
-              Text('Les images ont été ajoutées avec succès à l\'album')));
+                  Text('Les images ont été ajoutées avec succès à l\'album')));
           _loadPicture();
         },
       ),
-    )
+    );
   }
 
   void _confirmDeletion(BuildContext context, AlbumProvider albumProvider) {

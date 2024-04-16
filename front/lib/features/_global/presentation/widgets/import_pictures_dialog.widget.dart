@@ -7,7 +7,6 @@ import 'package:front/core/domain/usecase/upload_images.use_case.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-
 class ImportPicturesDialog extends StatefulWidget {
   const ImportPicturesDialog({super.key});
 
