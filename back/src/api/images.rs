@@ -55,6 +55,7 @@ pub struct ImagesQuery {
     limit: Option<u32>,
     offset: Option<u32>,
     quality: Option<ImageQuality>,
+    tags: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, ToSchema, AsChangeset, PartialEq, Eq)]
@@ -238,6 +239,12 @@ pub async fn get_image(
             Query,
             description = "Image quality",
             example = "low"
+        ),
+        (
+            "tags" = Option<String>,
+            Query,
+            description = "Filter images by tags",
+            example = "tag1,tag2"
         )
     ),
     responses(
@@ -300,7 +307,7 @@ pub async fn get_images(
             GROUP BY user_images.id
             LIMIT {limit} OFFSET {offset};
         */
-        user_images::table
+        let query_diesel = user_images::table
             .left_outer_join(album_images::table)
             .left_outer_join(
                 shared_albums::table.on(album_images::album_id.eq(shared_albums::album_id)),
@@ -314,11 +321,30 @@ pub async fn get_images(
                 user_images::tags,
                 crate::database::array_agg(users::email.nullable()),
             ))
-            .filter(user_images::user_id.eq(auth.user_id))
             .limit(limit as i64)
-            .offset(offset as i64)
-            .load::<ImageMetaData>(conn)
-            .map_err(SimpleDatabaseError::from)
+            .offset(offset as i64);
+        // Conditionally add tags filter
+        if query.tags.is_some() {
+            let tags: Vec<String> = query
+                .tags
+                .clone()
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.to_string())
+                .collect();
+            query_diesel
+                .filter(
+                    user_images::tags
+                        .contains(tags)
+                        .and(user_images::user_id.eq(auth.user_id)),
+                )
+                .load::<ImageMetaData>(conn)
+        } else {
+            query_diesel
+                .filter(user_images::user_id.eq(auth.user_id))
+                .load::<ImageMetaData>(conn)
+        }
+        .map_err(SimpleDatabaseError::from)
     })
     .await?;
 
