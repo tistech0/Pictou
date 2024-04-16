@@ -124,6 +124,7 @@ class _ViewPicturesState extends State<ViewPicture> {
                               return PhotoViewer(
                                 imageList: imageAlbum,
                                 initialIndex: index,
+                                albumId: widget.albumId,
                               );
                             },
                           );
