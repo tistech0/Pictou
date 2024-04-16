@@ -1,11 +1,16 @@
+import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:pictouapi/pictouapi.dart';
 import 'package:provider/provider.dart';
 import 'package:collection/collection.dart';
 import 'package:front/core/config/albumprovider.dart';
 import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
 import 'package:front/features/_global/presentation/widgets/bottom_bar.widget.dart';
+
+import '../widgets/photo_viewer.widget.dart';
 
 class ViewPicture extends StatefulWidget {
   final String albumId;
@@ -17,7 +22,7 @@ class ViewPicture extends StatefulWidget {
 }
 
 class _ViewPicturesState extends State<ViewPicture> {
-  late Future<List<Uint8List>> imageAlbumFuture;
+  Stream<List<Uint8List>>? imageAlbumStream;
 
   @override
   void initState() {
@@ -29,16 +34,15 @@ class _ViewPicturesState extends State<ViewPicture> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final imageProvider = Provider.of<ImagesProvider>(context, listen: false);
     if (userProvider.user?.accessToken != null) {
-      imageAlbumFuture = imageProvider.fetchImages(
-          userProvider.user!.accessToken!, widget.albumId);
+      imageAlbumStream = imageProvider.fetchImagesAlbum(userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final albumProvider = Provider.of<AlbumProvider>(context);
-    final album = albumProvider.albums
-        .firstWhereOrNull((album) => album.id == widget.albumId);
+    final album =
+    albumProvider.albums.firstWhereOrNull((album) => album.id == widget.albumId);
 
     if (album == null) {
       return Scaffold(
@@ -63,39 +67,34 @@ class _ViewPicturesState extends State<ViewPicture> {
           ),
         ],
       ),
-      body: FutureBuilder<List<Uint8List>>(
-        future: imageAlbumFuture,
+      body: StreamBuilder<List<Uint8List>>(
+        stream: imageAlbumStream,
         builder: (context, snapshot) {
-          // Vérifiez l'état de la connexion pour afficher le loader
-          if (snapshot.connectionState != ConnectionState.done) {
-            // Montre un loader tant que les données ne sont pas complètement chargées
-            return const Center(
-                child: CircularProgressIndicator(
-              backgroundColor: Colors.black,
-            ));
-          }
-          // Une fois les données chargées, vérifiez si elles contiennent des données valides
           if (snapshot.hasData) {
             final imageAlbum = snapshot.data!;
-            if (imageAlbum.isNotEmpty) {
-              return GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                ),
-                itemCount: imageAlbum.length,
-                itemBuilder: (context, index) {
-                  return Image.memory(
+            return GridView.count(
+              crossAxisCount: 3,
+              padding: const EdgeInsets.all(16),
+              children: List.generate(imageAlbum.length, (index) {
+                return GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return PhotoViewer(
+                          imageList: imageAlbum,
+                          initialIndex: index,
+                        );
+                      },
+                    );
+                  },
+                  child: Image.memory(
                     imageAlbum[index],
                     fit: BoxFit.cover,
-                  );
-                },
-              );
-            } else {
-              // Gère le cas où il n'y a pas d'images dans l'album
-              return const Center(child: Text('Aucune image dans cet album.'));
-            }
+                  ),
+                );
+              }),
+            );
           } else if (snapshot.hasError) {
             // Gère les erreurs lors du chargement des images
             return Center(

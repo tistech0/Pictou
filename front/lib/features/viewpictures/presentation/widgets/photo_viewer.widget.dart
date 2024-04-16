@@ -1,11 +1,13 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 class PhotoViewer extends StatelessWidget {
-  final List<String> imagePaths;
+  final List<Uint8List> imageList;
   final int initialIndex;
 
   const PhotoViewer(
-      {super.key, required this.imagePaths, this.initialIndex = 0});
+      {super.key, required this.imageList, this.initialIndex = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -20,12 +22,15 @@ class PhotoViewer extends StatelessWidget {
               children: [
                 Expanded(
                   child: PageView.builder(
-                    itemCount: imagePaths.length,
+                    itemCount: imageList.length,
                     controller: PageController(initialPage: initialIndex),
                     itemBuilder: (context, index) {
-                      return Image.asset(
-                        imagePaths[index],
-                        fit: BoxFit.contain,
+                      return Container(
+                        color: Colors.white,
+                        child: Image.memory(
+                          imageList[index],
+                          fit: BoxFit.contain,
+                        ),
                       );
                     },
                   ),
