@@ -55,8 +55,24 @@ jobs:
     - name: Run clippy
       run: cargo clippy -- -Dwarnings
 
-  build:
+  test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: testing
+          POSTGRES_PASSWORD: testing
+          POSTGRES_DB: pictou-testing
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5433:5432
 
     steps:
     - uses: actions/checkout@v4
@@ -79,13 +95,12 @@ jobs:
 
     - name: Run tests
       run: |
-        cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+        cargo tarpaulin \
+          --no-default-features --features testing-support \
+          --timeout 120 --skip-clean --out xml -j 1
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v2
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
-
-    - name: Build
-      run: cargo build --verbose

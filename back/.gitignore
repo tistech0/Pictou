@@ -4,3 +4,5 @@ storage/
 .vscode
 .idea
 .env
+tarpaulin-report.html
+cobertura.xml

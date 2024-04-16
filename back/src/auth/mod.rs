@@ -300,8 +300,9 @@ mod tests {
             "invalid secret should fail"
         );
 
-        let Ok(valid_token) = AuthContext::decode_jwt(VALID_JWT, "pictou", b"secret") else {
-            panic!("valid token failed to decode")
+        let valid_token = match AuthContext::decode_jwt(VALID_JWT, "pictou", b"secret") {
+            Ok(token) => token,
+            Err(error) => panic!("valid token failed to decode: {}", error),
         };
         assert_eq!(
             valid_token.claims.sub,
@@ -353,6 +354,7 @@ mod tests {
         }
 
         let config = web::Data::new(AppConfiguration {
+            app_name: "pictou".to_owned(),
             jwt_secret: b"secret".as_ref().into(),
             ..Default::default()
         });
