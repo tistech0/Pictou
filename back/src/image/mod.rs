@@ -2,13 +2,18 @@
 
 use std::{
     fmt::{self, Display},
-    io::Cursor,
+    io::{self, Cursor},
     pin::Pin,
 };
 
+use actix_web::web;
 use image_backend::{
-    codecs::{gif::GifDecoder, jpeg::JpegDecoder, png::PngDecoder},
-    DynamicImage,
+    codecs::{
+        gif::GifDecoder,
+        jpeg::{JpegDecoder, JpegEncoder},
+        png::PngDecoder,
+    },
+    DynamicImage, ExtendedColorType, ImageBuffer, LumaA, Rgba,
 };
 use jpegxl_rs::{
     decode::decoder_builder,
@@ -17,9 +22,10 @@ use jpegxl_rs::{
 };
 use jpegxl_rs::{encode::EncoderResult, image::ToDynamic};
 use md5::{Digest, Md5};
-use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader};
+use tracing::Level;
 
-use crate::storage::ImageHash;
+use crate::storage::{ImageHash, ImageStorage, StoredImageKind};
 
 use self::jxl::JxlDecoder;
 
@@ -186,4 +192,91 @@ fn new_decoder<'a>(
         ImageType::Gif => Box::new(GifDecoder::new(reader)?),
         ImageType::Jxl => Box::new(JxlDecoder::new(reader)?),
     })
+}
+
+#[tracing::instrument(skip(storage), level = Level::DEBUG)]
+async fn create_thumbnail(
+    storage: &dyn ImageStorage,
+    hash: ImageHash,
+    size: u32,
+) -> io::Result<()> {
+    let stored_kind = StoredImageKind::JpegThumbnail(size);
+    // Load the compressed image (not original for less data transfer)
+    let image_source = storage
+        .load(hash, StoredImageKind::CompressedJpegXl)
+        .await?;
+
+    // Decode the jxl image
+    let mut input = BufReader::new(image_source);
+    let decoded: DecodedImage = decode(
+        ImageType::Jxl,
+        Pin::new(&mut input),
+        (size * size * 4) as usize,
+    )
+    .await
+    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    drop(input);
+
+    // Resize the image to the requested thumbnail size
+    let thumbnail = decoded.square_thumbnail(size);
+
+    // Encode the image as a jpeg thumbnail
+    let bytes = thumbnail.as_bytes();
+    let mut buf = Cursor::new(Vec::with_capacity(bytes.len()));
+    let mut encoder = JpegEncoder::new(&mut buf);
+
+    // Can't use encode because of the incredible idea of the image-rs developper to forbid "silent" alpha channel removal
+    // (like you don't know encoding something in jpeg will remove the alpha channel, but no, you have to specify it explicitly)
+    // https://github.com/image-rs/image/commit/c193acbf7b745b071f5617e269f0955ee97c25d3
+    match thumbnail.color().into() {
+        ExtendedColorType::Rgb8 | ExtendedColorType::L8 => encoder.encode(
+            bytes,
+            thumbnail.width(),
+            thumbnail.height(),
+            thumbnail.color().into(),
+        ),
+        ExtendedColorType::La8 => {
+            let image: ImageBuffer<LumaA<_>, _> =
+                ImageBuffer::from_raw(thumbnail.width(), thumbnail.height(), bytes).unwrap();
+            encoder.encode_image(&image)
+        }
+        ExtendedColorType::Rgba8 => {
+            let image: ImageBuffer<Rgba<_>, _> =
+                ImageBuffer::from_raw(thumbnail.width(), thumbnail.height(), bytes).unwrap();
+            encoder.encode_image(&image)
+        }
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Unsupported color type",
+            ));
+        }
+    }
+    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    // Store the thumbnail in the storage
+    let mut compressed_output = storage.store(hash, stored_kind).await?;
+    buf.set_position(0);
+    compressed_output.write_all_buf(&mut buf).await
+}
+
+#[tracing::instrument(skip(storage), level = Level::DEBUG)]
+pub async fn load_thumbnail(
+    storage: web::Data<dyn ImageStorage>,
+    hash: ImageHash,
+    size: u32,
+) -> io::Result<Pin<Box<dyn AsyncRead>>> {
+    // Round up image size to multiple of 64
+    let size = size.next_multiple_of(64);
+    let image_kind = StoredImageKind::JpegThumbnail(size);
+
+    // Try to load from storage and return if success
+    let result = storage.load(hash, image_kind).await;
+    if result.is_ok() {
+        return result;
+    }
+
+    // Otherwise resize the image, store it and return it
+    create_thumbnail(storage.as_ref(), hash, size).await?;
+    storage.load(hash, image_kind).await
 }
