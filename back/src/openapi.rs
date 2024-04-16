@@ -8,7 +8,7 @@ use utoipa_auto_discovery::utoipa_auto_discovery;
 
 use crate::{
     api::{
-        albums::{Album, AlbumList, AlbumPost},
+        albums::{Album, AlbumList, AlbumPatch, AlbumPost},
         images::{ImageMetaData, ImagePatch, ImagePayload, ImageUploadResponse, ImagesMetaData},
         users::{User, UserPatch},
         Binary, OpenapiUuid,
@@ -73,7 +73,7 @@ impl Modify for SecuritySchemas {
     ),
     components(
         schemas(Binary, ImageUploadResponse, ImagePatch, ImagePayload, ImageMetaData, ImagesMetaData,
-            Album, AlbumList, AlbumPost,
+            Album, AlbumList, AlbumPost, AlbumPatch,
             User, UserPatch,
             ApiErrorCode, ApiError, OpenapiUuid,
             AuthenticationResponse, PersistedUserInfo, AuthError, AuthErrorKind, RefreshTokenParams),
