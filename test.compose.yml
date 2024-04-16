@@ -1,0 +1,14 @@
+name: pictou-test
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: on-failure
+    volumes:
+      - ./data/postgres-test:/var/lib/postgresql/data
+    env_file:
+      - ./back/test.env
+    environment:
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5433:5432"
