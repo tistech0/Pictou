@@ -38,7 +38,7 @@ class _HomePageState extends State<HomePage> {
             padding: EdgeInsets.all(8.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Album',
@@ -49,7 +49,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 RefreshableAlbumCarouselWidget(isShared: false),
                 Padding(
-                  padding: EdgeInsets.only(top: 40.0),
+                  padding: EdgeInsets.only(top: 40.0, left: 8.0), // <-- Update this line
                   child: Text(
                     'Shared Album',
                     style: TextStyle(

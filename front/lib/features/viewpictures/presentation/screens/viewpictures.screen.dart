@@ -23,6 +23,7 @@ class ViewPicture extends StatefulWidget {
 
 class _ViewPicturesState extends State<ViewPicture> {
   Stream<List<Uint8List>>? imageAlbumStream;
+  List<String> _tags = [];
 
   @override
   void initState() {
@@ -33,10 +34,15 @@ class _ViewPicturesState extends State<ViewPicture> {
   Future<void> _loadPicture() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final imageProvider = Provider.of<ImagesProvider>(context, listen: false);
-    if (userProvider.user?.accessToken != null) {
+    final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
+    final album = albumProvider.albums.firstWhereOrNull((album) => album.id == widget.albumId);
+
+    if (userProvider.user?.accessToken != null && album != null) {
+      _tags = album.tags;
       imageAlbumStream = imageProvider.fetchImagesAlbum(userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -67,45 +73,61 @@ class _ViewPicturesState extends State<ViewPicture> {
           ),
         ],
       ),
-      body: StreamBuilder<List<Uint8List>>(
-        stream: imageAlbumStream,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            final imageAlbum = snapshot.data!;
-            return GridView.count(
-              crossAxisCount: 3,
+      body: Column (
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_tags.isNotEmpty)
+            Padding(
               padding: const EdgeInsets.all(16),
-              children: List.generate(imageAlbum.length, (index) {
-                return GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return PhotoViewer(
-                          imageList: imageAlbum,
-                          initialIndex: index,
-                        );
-                      },
-                    );
-                  },
-                  child: Image.memory(
-                    imageAlbum[index],
-                    fit: BoxFit.cover,
-                  ),
-                );
-              }),
-            );
-          } else if (snapshot.hasError) {
-            // Gère les erreurs lors du chargement des images
-            return Center(
-                child: Text(
-                    'Erreur lors du chargement des images: ${snapshot.error}'));
-          } else {
-            // Fallback pour tout autre cas non traité
-            return const Center(child: Text("Quelque chose s'est mal passé"));
-          }
-        },
-      ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _tags.map((tag) => Chip(label: Text(tag))).toList(),
+              ),
+            ),
+          Expanded(
+            child: StreamBuilder<List<Uint8List>>(
+              stream: imageAlbumStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  final imageAlbum = snapshot.data!;
+                  return GridView.count(
+                    crossAxisCount: 3,
+                    padding: const EdgeInsets.all(16),
+                    children: List.generate(imageAlbum.length, (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return PhotoViewer(
+                                imageList: imageAlbum,
+                                initialIndex: index,
+                              );
+                            },
+                          );
+                        },
+                        child: Image.memory(
+                          imageAlbum[index],
+                          fit: BoxFit.cover,
+                        ),
+                      );
+                    }),
+                  );
+                } else if (snapshot.hasError) {
+                  // Gère les erreurs lors du chargement des images
+                  return Center(
+                      child: Text(
+                          'Erreur lors du chargement des images: ${snapshot.error}'));
+                } else {
+                  // Fallback pour tout autre cas non traité
+                  return const Center(child: Text("Quelque chose s'est mal passé"));
+                }
+              },
+            ),
+        ),
+      ],
+    ),
       bottomNavigationBar: const BottomBarWidget(),
     );
   }
