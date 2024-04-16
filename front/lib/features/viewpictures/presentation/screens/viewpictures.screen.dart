@@ -36,6 +36,7 @@ class _ViewPicturesState extends State<ViewPicture> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     final albumProvider = Provider.of<AlbumProvider>(context);
     final album = albumProvider.albums
         .firstWhereOrNull((album) => album.id == widget.albumId);
@@ -66,48 +67,41 @@ class _ViewPicturesState extends State<ViewPicture> {
       body: FutureBuilder<List<Uint8List>>(
         future: imageAlbumFuture,
         builder: (context, snapshot) {
-          // Vérifiez l'état de la connexion pour afficher le loader
           if (snapshot.connectionState != ConnectionState.done) {
-            // Montre un loader tant que les données ne sont pas complètement chargées
             return const Center(
                 child: CircularProgressIndicator(
-              backgroundColor: Colors.black,
+              color: Colors.black,
             ));
           }
-          // Une fois les données chargées, vérifiez si elles contiennent des données valides
-          if (snapshot.hasData) {
-            final imageAlbum = snapshot.data!;
-            if (imageAlbum.isNotEmpty) {
-              return GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                ),
-                itemCount: imageAlbum.length,
-                itemBuilder: (context, index) {
-                  return Image.memory(
-                    imageAlbum[index],
-                    fit: BoxFit.cover,
-                  );
-                },
-              );
-            } else {
-              // Gère le cas où il n'y a pas d'images dans l'album
-              return const Center(child: Text('Aucune image dans cet album.'));
-            }
+          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+            return GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 4,
+              ),
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, index) {
+                return Image.memory(snapshot.data![index], fit: BoxFit.cover);
+              },
+            );
           } else if (snapshot.hasError) {
-            // Gère les erreurs lors du chargement des images
-            return Center(
-                child: Text(
-                    'Erreur lors du chargement des images: ${snapshot.error}'));
+            return Center(child: Text('Erreur: ${snapshot.error}'));
           } else {
-            // Fallback pour tout autre cas non traité
-            return const Center(child: Text("Quelque chose s'est mal passé"));
+            return const Center(child: Text('Aucune image dans cet album.'));
           }
         },
       ),
-      bottomNavigationBar: const BottomBarWidget(),
+      bottomNavigationBar: BottomBarWidget(
+        selectedAlbum: album,
+        accessToken: userProvider.user?.accessToken ?? '',
+        onSuccess: () {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content:
+                  Text('Les images ont été ajoutées avec succès à l\'album')));
+          _loadPicture();
+        },
+      ),
     );
   }
 

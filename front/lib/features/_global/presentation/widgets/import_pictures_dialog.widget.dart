@@ -6,9 +6,6 @@ import 'package:front/core/domain/entities/album.entity.dart';
 import 'package:front/core/domain/usecase/upload_images.use_case.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:dio/dio.dart';
-import 'package:path/path.dart' as path;
-import 'package:http_parser/http_parser.dart';
 
 class ImportPicturesDialog extends StatefulWidget {
   const ImportPicturesDialog({super.key});
@@ -40,9 +37,15 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
         imagesProvider: imagesProvider,
         albumProvider: albumProvider,
         accessToken: accessToken,
-        onSuccess: () => Navigator.of(context).pop(),
+        onSuccess: handleSuccess,
       );
     }
+  }
+
+  void handleSuccess() {
+    Navigator.of(context).pop(); // Ferme le dialogue
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Les images ont été ajoutées avec succès à l\'album')));
   }
 
   Future<void> _uploadImages(List<XFile> images) async {
@@ -86,7 +89,6 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
               if (images.isNotEmpty) {
                 print("${images.length} images picked.");
                 await _uploadImages(images);
-                print('Images sélectionnées pour${_selectedAlbum?.id}');
               } else {
                 print("No images selected.");
               }
