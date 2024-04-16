@@ -8,7 +8,7 @@ use crate::{
     storage::{ImageHash, ImageStorage, StoredImageKind},
 };
 use actix_web::web;
-use image_backend::codecs::jpeg::JpegEncoder;
+use image_backend::{codecs::jpeg::JpegEncoder, ExtendedColorType, ImageBuffer, LumaA, Rgba};
 use tokio::io::{AsyncRead, AsyncWriteExt, BufReader};
 use tracing::{debug, Level};
 
@@ -43,14 +43,31 @@ async fn create_thumbnail(
     let mut buf = Cursor::new(Vec::with_capacity(bytes.len()));
     let mut encoder = JpegEncoder::new(&mut buf);
 
-    encoder
-        .encode(
+    match thumbnail.color().into() {
+        ExtendedColorType::Rgb8 | ExtendedColorType::L8 => encoder.encode(
             bytes,
             thumbnail.width(),
             thumbnail.height(),
             thumbnail.color().into(),
-        )
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        ),
+        ExtendedColorType::La8 => {
+            let image: ImageBuffer<LumaA<_>, _> =
+                ImageBuffer::from_raw(thumbnail.width(), thumbnail.height(), bytes).unwrap();
+            encoder.encode_image(&image)
+        }
+        ExtendedColorType::Rgba8 => {
+            let image: ImageBuffer<Rgba<_>, _> =
+                ImageBuffer::from_raw(thumbnail.width(), thumbnail.height(), bytes).unwrap();
+            encoder.encode_image(&image)
+        }
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Unsupported color type",
+            ));
+        }
+    }
+    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
     // Store the thumbnail in the storage
     let mut compressed_output = storage.store(hash, stored_kind).await?;
