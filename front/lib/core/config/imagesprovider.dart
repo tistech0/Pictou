@@ -134,6 +134,4 @@ class ImagesProvider with ChangeNotifier {
       print("Exception lors de la suppression de l'image: $e");
     }
   }
-
-// Ajoutez d'autres méthodes pour la gestion des images si nécessaire
 }
