@@ -61,8 +61,6 @@ class _ViewPicturesState extends State<ViewPicture> {
 
     if (userProvider.user?.accessToken != null && album != null) {
       _tags = album.tags;
-      imageAlbumStream = null;
-      setState(() {});
       imageAlbumStream = imageProvider.fetchImagesAlbum(
           userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
       setState(() {});
