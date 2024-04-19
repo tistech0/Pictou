@@ -83,6 +83,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
           IconButton(
             icon: Icon(Icons.info_outline),
             onPressed: () async {
+              print('Affichage des détails de l\'image');
               // final Response<Album> response = await albumApi.getAlbum(
               //   id: widget.albumId,
               //   headers: {

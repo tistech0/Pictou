@@ -52,6 +52,7 @@ class _ViewPicturesState extends State<ViewPicture> {
   }
 
   Future<void> _loadPicture() async {
+    /// Récupère les informations de l'utilisateur connecté
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final imageProvider = Provider.of<ImagesProvider>(context, listen: false);
     final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
