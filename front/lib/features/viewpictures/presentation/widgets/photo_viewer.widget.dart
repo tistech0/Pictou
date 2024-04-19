@@ -2,114 +2,119 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:front/core/domain/entities/album.entity.dart';
-import 'package:front/core/domain/entities/metadata.entity.dart';
+import 'package:front/core/config/imagesprovider.dart';
+import 'package:front/core/config/userprovider.dart';
+import 'package:front/core/domain/usecase/deleted_picture.use_case.dart';
 import 'package:pictouapi/pictouapi.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../core/config/userprovider.dart';
 import 'metadata_dialogue.widget.dart';
 
 class PhotoViewer extends StatefulWidget {
   final List<Uint8List> imageList;
   final int initialIndex;
+  final String accessToken;
   final String albumId;
+  final DeleteImageUseCase deleteImageUseCase;
+  final VoidCallback onImageDeleted;
 
-  const PhotoViewer(
-      {super.key, required this.imageList, required this.albumId, this.initialIndex = 0});
+  const PhotoViewer({
+    super.key,
+    required this.imageList,
+    required this.initialIndex,
+    required this.accessToken,
+    required this.albumId,
+    required this.deleteImageUseCase,
+    required this.onImageDeleted,
+  });
 
   @override
-  _PhotoViewerState createState() => _PhotoViewerState();
+  State<PhotoViewer> createState() => _PhotoViewerState();
 }
 
 class _PhotoViewerState extends State<PhotoViewer> {
   late PageController _pageController;
-  int _currentIndex = 0;
-  final albumApi = Pictouapi().getAlbumsApi();
+  String? _currentImageId;
+  late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: _currentIndex);
-    _pageController.addListener(() {
+    _pageController = PageController(initialPage: widget.initialIndex);
+    _fetchImageId(widget.initialIndex);
+  }
+
+  Future<void> _fetchImageId(int index) async {
+    String? imageId = await Provider.of<ImagesProvider>(context, listen: false)
+        .getImageIdByIndex(widget.accessToken, widget.albumId, index);
+    if (mounted) {
       setState(() {
-        _currentIndex = _pageController.page!.round();
+        _currentImageId = imageId;
+        _currentIndex = index;
       });
-    });
+    }
+  }
+
+  void _deleteImage() async {
+    if (_currentImageId != null) {
+      await widget.deleteImageUseCase.execute(_currentImageId!);
+      widget.onImageDeleted(); // Appelle le callback après la suppression
+      Navigator.of(context)
+          .pop(); // Retourner à l'écran précédent après la suppression
+    }
+  }
+
+  void _showImageDetails() {
+    if (_currentImageId != null) {
+      // Logique pour afficher les détails de l'image
+      print('Affichage des détails pour l\'image avec ID: $_currentImageId');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Visualiseur de Photos'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.info_outline),
+            onPressed: () async {
+              // final Response<Album> response = await albumApi.getAlbum(
+              //   id: widget.albumId,
+              //   headers: {
+              //     "Authorization": "Bearer ${userProvider.user?.accessToken}",
+              //   },
+              // );
+              // final Album? albumActual = response.data;
+              // final ImageMetaData? imageMetadata =
+              //     albumActual?.images[_currentIndex];
+              // showMetadataDialog(context, imageMetadata!);
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: _deleteImage,
+          ),
+        ],
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.imageList.length,
+        onPageChanged: (int index) => _fetchImageId(index),
+        itemBuilder: (context, index) {
+          return Image.memory(widget.imageList[index], fit: BoxFit.cover);
+        },
+      ),
+    );
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).pop(),
-        child: Stack(
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: PageView.builder(
-                    itemCount: widget.imageList.length,
-                    controller: _pageController,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        color: Colors.white,
-                        child: Image.memory(
-                          widget.imageList[index],
-                          fit: BoxFit.contain,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.share, color: Colors.white),
-                      onPressed: () {},
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.white),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: IconButton(
-                icon: Icon(Icons.info_outline, color: Colors.black),
-                onPressed: () async {
-                  final Response<Album> response = await albumApi.getAlbum(
-                    id: widget.albumId,
-                    headers: {
-                      "Authorization": "Bearer ${userProvider.user
-                          ?.accessToken}",
-                    },
-                  );
-                  final Album? albumActual = response.data;
-                  final ImageMetaData? imageMetadata = albumActual
-                      ?.images[_currentIndex];
-                  showMetadataDialog(context, imageMetadata!);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

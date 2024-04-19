@@ -28,8 +28,7 @@ class Pictouapi {
   })  : this.serializers = serializers ?? standardSerializers,
         this.dio = dio ??
             Dio(BaseOptions(
-              baseUrl: basePathOverride ??
-                  'https://66b6-163-5-23-29.ngrok-free.app/api', // URL par défaut pour le développement
+              baseUrl: basePathOverride ?? 'http://localhost:8000/api',
               connectTimeout: const Duration(milliseconds: 5000),
               receiveTimeout: const Duration(milliseconds: 3000),
             )) {
