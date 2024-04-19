@@ -75,40 +75,67 @@ class _PhotoViewerState extends State<PhotoViewer> {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Visualiseur de Photos'),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.info_outline),
-            onPressed: () async {
-              print('Affichage des détails de l\'image');
-              // final Response<Album> response = await albumApi.getAlbum(
-              //   id: widget.albumId,
-              //   headers: {
-              //     "Authorization": "Bearer ${userProvider.user?.accessToken}",
-              //   },
-              // );
-              // final Album? albumActual = response.data;
-              // final ImageMetaData? imageMetadata =
-              //     albumActual?.images[_currentIndex];
-              // showMetadataDialog(context, imageMetadata!);
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: _deleteImage,
-          ),
-        ],
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.imageList.length,
-        onPageChanged: (int index) => _fetchImageId(index),
-        itemBuilder: (context, index) {
-          return Image.memory(widget.imageList[index], fit: BoxFit.cover);
-        },
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: PageView.builder(
+                    itemCount: widget.imageList.length,
+                    controller: _pageController,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        color: Colors.white,
+                        child: Image.memory(
+                          widget.imageList[index],
+                          fit: BoxFit.contain,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.share, color: Colors.white),
+                      onPressed: () {},
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.white),
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: Icon(Icons.info_outline, color: Colors.black),
+                onPressed: () async {
+                  final Response<Album> response = await albumApi.getAlbum(
+                    id: widget.albumId,
+                    headers: {
+                      "Authorization": "Bearer ${userProvider.user
+                          ?.accessToken}",
+                    },
+                  );
+                  final Album? albumActual = response.data;
+                  final ImageMetaData? imageMetadata = albumActual
+                      ?.images[_currentIndex];
+                  showMetadataDialog(context, imageMetadata!);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
