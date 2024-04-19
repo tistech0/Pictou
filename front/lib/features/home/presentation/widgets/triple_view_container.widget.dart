@@ -43,7 +43,8 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
     List<AlbumEntity> albums = allAlbums;
     if (widget.isShared) {
       final currentUserId = userProvider.user?.userId;
-      albums = allAlbums.where((album) => album.ownerId != currentUserId).toList();
+      albums =
+          allAlbums.where((album) => album.ownerId != currentUserId).toList();
     }
 
     final splitPoint = (albums.length / 2).ceil();
@@ -97,7 +98,8 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
 
     return FutureBuilder<Uint8List?>(
       future: userProvider.user?.accessToken != null
-          ? imageProvider.fetchFirstImageOfAlbum(userProvider.user!.accessToken!, album.id, ImageQuality.low)
+          ? imageProvider.fetchFirstImageOfAlbum(
+              userProvider.user!.accessToken!, album.id, ImageQuality.low)
           : Future.value(null),
       builder: (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
