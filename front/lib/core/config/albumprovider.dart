@@ -122,7 +122,7 @@ class AlbumProvider with ChangeNotifier {
         return;
       }
 
-      final albumPost = AlbumPost((b) => b
+      final albumPost = AlbumPatch((b) => b
         // ..name = existingAlbum.name
         // ..tags = ListBuilder(existingAlbum.tags)
         // ..images = ListBuilder(existingAlbum.images.map((image) => image.id))

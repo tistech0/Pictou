@@ -66,7 +66,7 @@ class ImagesProvider with ChangeNotifier {
   }
 
   Future<Uint8List?> fetchFirstImageOfAlbum(
-      String accessToken, String albumId, ImageQuality quality) async {
+      String accessToken, String albumId) async {
     try {
       final response = await _albumsApi.getAlbum(
           id: albumId, headers: {"Authorization": "Bearer $accessToken"});
@@ -77,7 +77,6 @@ class ImagesProvider with ChangeNotifier {
           final ImageMetaData firstImage = images.first;
           final response = await _imagesApi.getImage(
               id: firstImage.id,
-              quality: quality,
               headers: {"Authorization": "Bearer $accessToken"});
           if (response.statusCode == 200 && response.data != null) {
             final Uint8List? imageData = response.data;
