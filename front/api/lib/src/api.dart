@@ -28,10 +28,13 @@ class Pictouapi {
   })  : this.serializers = serializers ?? standardSerializers,
         this.dio = dio ??
             Dio(BaseOptions(
-              baseUrl: basePathOverride ?? 'http://localhost:8000/api',
+              baseUrl: basePathOverride ?? 'https://45b5-2a01-e0a-a58-97d0-57c2-d5c7-8cc-17.ngrok-free.app/api',
               connectTimeout: const Duration(milliseconds: 5000),
               receiveTimeout: const Duration(milliseconds: 3000),
             )) {
+    // Configuration des intercepteurs...
+
+// Les autres méthodes
     if (interceptors == null) {
       this.dio.interceptors.addAll([
         OAuthInterceptor(),
