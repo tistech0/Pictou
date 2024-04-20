@@ -163,7 +163,7 @@ class _ImportPicturesDialogState extends State<ImportPicturesDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Annuler'),
           style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
+            primary: Colors.white,
             backgroundColor: Colors.red,
           ),
         ),
