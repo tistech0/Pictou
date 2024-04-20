@@ -44,8 +44,7 @@ class AlbumProvider with ChangeNotifier {
       var albumsApi = _pictouApi.getAlbumsApi();
       final albumPost = AlbumPost((b) => b
         ..name = name
-        ..tags = ListBuilder(tags)
-        ..images = ListBuilder(images));
+        ..tags = ListBuilder(tags));
 
       final response = await albumsApi.createAlbum(
         albumPost: albumPost,
@@ -130,7 +129,7 @@ class AlbumProvider with ChangeNotifier {
 
       final response = await albumsApi.editAlbum(
         id: albumId,
-        albumPost: albumPost,
+        albumPatch: albumPost,
         headers: {"Authorization": "Bearer $accessToken"},
       );
       print(albumPost);

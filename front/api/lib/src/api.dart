@@ -28,7 +28,7 @@ class Pictouapi {
   })  : this.serializers = serializers ?? standardSerializers,
         this.dio = dio ??
             Dio(BaseOptions(
-              baseUrl: basePathOverride ?? basePath,
+              baseUrl: basePathOverride ?? 'http://localhost:8000/api',
               connectTimeout: const Duration(milliseconds: 5000),
               receiveTimeout: const Duration(milliseconds: 3000),
             )) {

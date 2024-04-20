@@ -99,7 +99,7 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
     return FutureBuilder<Uint8List?>(
       future: userProvider.user?.accessToken != null
           ? imageProvider.fetchFirstImageOfAlbum(
-              userProvider.user!.accessToken!, album.id, ImageQuality.low)
+              userProvider.user!.accessToken!, album.id)
           : Future.value(null),
       builder: (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
