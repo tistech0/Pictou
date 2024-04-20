@@ -32,8 +32,11 @@ class ApiErrorCode extends EnumClass {
   static const ApiErrorCode UNSUPPORTED_IMAGE_TYPE = _$UNSUPPORTED_IMAGE_TYPE;
   @BuiltValueEnumConst(wireName: r'INVALID_ENCODING')
   static const ApiErrorCode INVALID_ENCODING = _$INVALID_ENCODING;
-  @BuiltValueEnumConst(wireName: r'READ_ONLY', fallback: true)
+  @BuiltValueEnumConst(wireName: r'READ_ONLY')
   static const ApiErrorCode READ_ONLY = _$READ_ONLY;
+  @BuiltValueEnumConst(wireName: r'IMAGE_CLASSIFIER_FAILURE', fallback: true)
+  static const ApiErrorCode IMAGE_CLASSIFIER_FAILURE =
+      _$IMAGE_CLASSIFIER_FAILURE;
 
   static Serializer<ApiErrorCode> get serializer => _$apiErrorCodeSerializer;
 

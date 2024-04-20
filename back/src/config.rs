@@ -12,6 +12,7 @@ use url::Url;
 pub struct AppConfiguration {
     pub app_name: String,
     pub postgres_host: String,
+    pub postgres_port: u16,
     pub postgres_user: String,
     pub postgres_password: String,
     pub postgres_db: String,
@@ -57,6 +58,7 @@ impl AppConfiguration {
         Ok(AppConfiguration {
             app_name: env::var("APP_NAME")?,
             postgres_host: env::var("POSTGRES_HOST")?,
+            postgres_port: env::var("POSTGRES_PORT").map_or(Ok(5432), |s| s.parse())?,
             postgres_user: env::var("POSTGRES_USER")?,
             postgres_password: env::var("POSTGRES_PASSWORD")?,
             postgres_db: env::var("POSTGRES_DB")?,
@@ -97,6 +99,7 @@ impl Default for AppConfiguration {
         AppConfiguration {
             app_name: "Pictou".to_owned(),
             postgres_host: Default::default(),
+            postgres_port: 5432,
             postgres_user: Default::default(),
             postgres_password: Default::default(),
             postgres_db: Default::default(),
@@ -127,6 +130,7 @@ impl Debug for AppConfiguration {
         f.debug_struct("AppConfiguration")
             .field("app_name", &self.app_name)
             .field("postgres_host", &self.postgres_host)
+            .field("postgres_port", &self.postgres_port)
             .field("postgres_user", &self.postgres_user)
             .field("postgres_password", &"<redacted>")
             .field("postgres_db", &self.postgres_db)

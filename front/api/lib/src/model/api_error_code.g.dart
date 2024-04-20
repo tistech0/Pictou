@@ -25,6 +25,8 @@ const ApiErrorCode _$UNSUPPORTED_IMAGE_TYPE =
 const ApiErrorCode _$INVALID_ENCODING =
     const ApiErrorCode._('INVALID_ENCODING');
 const ApiErrorCode _$READ_ONLY = const ApiErrorCode._('READ_ONLY');
+const ApiErrorCode _$IMAGE_CLASSIFIER_FAILURE =
+    const ApiErrorCode._('IMAGE_CLASSIFIER_FAILURE');
 
 ApiErrorCode _$valueOf(String name) {
   switch (name) {
@@ -52,8 +54,10 @@ ApiErrorCode _$valueOf(String name) {
       return _$INVALID_ENCODING;
     case 'READ_ONLY':
       return _$READ_ONLY;
+    case 'IMAGE_CLASSIFIER_FAILURE':
+      return _$IMAGE_CLASSIFIER_FAILURE;
     default:
-      return _$READ_ONLY;
+      return _$IMAGE_CLASSIFIER_FAILURE;
   }
 }
 
@@ -71,6 +75,7 @@ final BuiltSet<ApiErrorCode> _$values =
   _$UNSUPPORTED_IMAGE_TYPE,
   _$INVALID_ENCODING,
   _$READ_ONLY,
+  _$IMAGE_CLASSIFIER_FAILURE,
 ]);
 
 class _$ApiErrorCodeMeta {
@@ -87,6 +92,7 @@ class _$ApiErrorCodeMeta {
   ApiErrorCode get UNSUPPORTED_IMAGE_TYPE => _$UNSUPPORTED_IMAGE_TYPE;
   ApiErrorCode get INVALID_ENCODING => _$INVALID_ENCODING;
   ApiErrorCode get READ_ONLY => _$READ_ONLY;
+  ApiErrorCode get IMAGE_CLASSIFIER_FAILURE => _$IMAGE_CLASSIFIER_FAILURE;
   ApiErrorCode valueOf(String name) => _$valueOf(name);
   BuiltSet<ApiErrorCode> get values => _$values;
 }
@@ -113,6 +119,7 @@ class _$ApiErrorCodeSerializer implements PrimitiveSerializer<ApiErrorCode> {
     'UNSUPPORTED_IMAGE_TYPE': 'UNSUPPORTED_IMAGE_TYPE',
     'INVALID_ENCODING': 'INVALID_ENCODING',
     'READ_ONLY': 'READ_ONLY',
+    'IMAGE_CLASSIFIER_FAILURE': 'IMAGE_CLASSIFIER_FAILURE',
   };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'UNKNOWN': 'UNKNOWN',
@@ -127,6 +134,7 @@ class _$ApiErrorCodeSerializer implements PrimitiveSerializer<ApiErrorCode> {
     'UNSUPPORTED_IMAGE_TYPE': 'UNSUPPORTED_IMAGE_TYPE',
     'INVALID_ENCODING': 'INVALID_ENCODING',
     'READ_ONLY': 'READ_ONLY',
+    'IMAGE_CLASSIFIER_FAILURE': 'IMAGE_CLASSIFIER_FAILURE',
   };
 
   @override

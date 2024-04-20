@@ -1,5 +1,3 @@
-import 'package:pictouapi/src/model/image_meta_data.dart';
-
 class ImageEntity {
   final String id;
   final String path;
@@ -47,7 +45,7 @@ class ImageEntity {
     return 'ImageEntity(id: $id, path: $path, caption: $caption, ownerId: $ownerId, sharedWith: $sharedWith, tags: $tags)';
   }
 
-  static fromImageModel(ImageMetaData image) {
+  static fromImageModel(image) {
     return ImageEntity(
       id: image.id,
       path: image.path,

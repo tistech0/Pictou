@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:pictouapi/src/api_util.dart';
 import 'package:pictouapi/src/model/album.dart';
 import 'package:pictouapi/src/model/album_list.dart';
+import 'package:pictouapi/src/model/album_patch.dart';
 import 'package:pictouapi/src/model/album_post.dart';
 import 'package:pictouapi/src/model/api_error.dart';
 
@@ -256,7 +257,7 @@ class AlbumsApi {
   ///
   /// Parameters:
   /// * [id] - Album to edit
-  /// * [albumPost] - Album to edit
+  /// * [albumPatch] - Album to edit
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -268,7 +269,7 @@ class AlbumsApi {
   /// Throws [DioException] if API call or serialization fails
   Future<Response<Album>> editAlbum({
     required String id,
-    required AlbumPost albumPost,
+    required AlbumPatch albumPatch,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -296,8 +297,8 @@ class AlbumsApi {
     dynamic _bodyData;
 
     try {
-      const _type = FullType(AlbumPost);
-      _bodyData = _serializers.serialize(albumPost, specifiedType: _type);
+      const _type = FullType(AlbumPatch);
+      _bodyData = _serializers.serialize(albumPatch, specifiedType: _type);
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _options.compose(

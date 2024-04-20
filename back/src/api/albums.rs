@@ -9,7 +9,7 @@ use crate::config::AppConfiguration;
 use crate::database::{self, Database, DatabaseError, SimpleDatabaseError};
 use crate::error_handler::ApiError;
 use actix_web::{delete, get, patch, post, web, HttpResponse, Result as ActixResult};
-use diesel::{AsChangeset, Insertable};
+use diesel::{insert_into, Insertable};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 use utoipa::ToSchema;
@@ -23,16 +23,17 @@ pub struct AlbumPost {
     tags: Vec<String>,
 }
 
-#[derive(Deserialize, Serialize, ToSchema, AsChangeset, PartialEq, Eq)]
-#[diesel(table_name = crate::schema::albums)]
+#[derive(Deserialize, ToSchema, PartialEq, Eq)]
 pub struct AlbumPatch {
     name: Option<String>,
     tags: Option<Vec<String>>,
+    shared_with: Option<Vec<String>>,
 }
 
 const EMPTY_ALBUM_PATCH: AlbumPatch = AlbumPatch {
     name: None,
     tags: None,
+    shared_with: None,
 };
 
 #[derive(Deserialize, Serialize, ToSchema)]
@@ -350,9 +351,40 @@ pub async fn edit_album(
         }
 
         if patch != EMPTY_ALBUM_PATCH {
+            if patch.shared_with.is_some() {
+                let user_ids = users::table
+                    .select(users::id)
+                    .filter(users::email.eq_any(patch.shared_with.as_ref().unwrap()))
+                    .load::<Uuid>(conn)
+                    .map_err(DatabaseError::<ApiError>::from)?;
+
+                diesel::delete(shared_albums::table.filter(shared_albums::album_id.eq(*album_id)))
+                    .execute(conn)
+                    .map_err(DatabaseError::<ApiError>::from)?;
+
+                // Insert the new shared users
+                insert_into(shared_albums::table)
+                    .values(
+                        user_ids
+                            .iter()
+                            .map(|user_id| {
+                                (
+                                    shared_albums::album_id.eq(*album_id),
+                                    shared_albums::user_id.eq(*user_id),
+                                )
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                    .on_conflict_do_nothing()
+                    .execute(conn)
+                    .map_err(DatabaseError::<ApiError>::from)?;
+            }
             diesel::update(albums::table)
                 .filter(albums::id.eq(*album_id))
-                .set(patch)
+                .set((
+                    patch.name.as_ref().map(|name| albums::name.eq(name)),
+                    patch.tags.as_ref().map(|tags| albums::tags.eq(tags)),
+                ))
                 .execute(conn)
                 .map_err(DatabaseError::<ApiError>::from)?;
         }
@@ -499,7 +531,7 @@ pub async fn add_image_to_album(
         }
 
         // Add the image to the album
-        diesel::insert_into(album_images::table)
+        insert_into(album_images::table)
             .values((
                 album_images::album_id.eq(path.0),
                 album_images::image_id.eq(path.1),

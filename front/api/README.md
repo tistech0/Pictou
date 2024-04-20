@@ -84,13 +84,13 @@ Class | Method | HTTP request | Description
 [*UsersApi*](doc/UsersApi.md) | [**deleteUser**](doc/UsersApi.md#deleteuser) | **DELETE** /users/self | Delete the user account
 [*UsersApi*](doc/UsersApi.md) | [**editSelf**](doc/UsersApi.md#editself) | **PATCH** /users/self | Modify user (self) properties
 [*UsersApi*](doc/UsersApi.md) | [**getSelf**](doc/UsersApi.md#getself) | **GET** /users/self | Get user (self) properties
-[*UsersApi*](doc/UsersApi.md) | [**getUsers**](doc/UsersApi.md#getusers) | **GET** /users | Get a list of users
 
 
 ## Documentation For Models
 
  - [Album](doc/Album.md)
  - [AlbumList](doc/AlbumList.md)
+ - [AlbumPatch](doc/AlbumPatch.md)
  - [AlbumPost](doc/AlbumPost.md)
  - [ApiError](doc/ApiError.md)
  - [ApiErrorCode](doc/ApiErrorCode.md)
@@ -99,14 +99,12 @@ Class | Method | HTTP request | Description
  - [AuthenticationResponse](doc/AuthenticationResponse.md)
  - [ImageMetaData](doc/ImageMetaData.md)
  - [ImagePatch](doc/ImagePatch.md)
- - [ImageQuality](doc/ImageQuality.md)
  - [ImageUploadResponse](doc/ImageUploadResponse.md)
  - [ImagesMetaData](doc/ImagesMetaData.md)
  - [PersistedUserInfo](doc/PersistedUserInfo.md)
  - [RefreshTokenParams](doc/RefreshTokenParams.md)
  - [User](doc/User.md)
- - [UserList](doc/UserList.md)
- - [UserPost](doc/UserPost.md)
+ - [UserPatch](doc/UserPatch.md)
 
 
 ## Documentation For Authorization

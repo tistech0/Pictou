@@ -1,18 +1,18 @@
 services:
   db:
-    image: postgres
-    restart: always
+    image: postgres:16-alpine
+    restart: unless-stopped
     volumes:
-    - ./database:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     env_file:
       - ./back/.env
     environment:
       PGDATA: /var/lib/postgresql/data
     ports:
-        - "5432:5432"
+      - "5432:5432"
 
   adminer:
     image: adminer
-    restart: always
+    restart: unless-stopped
     ports:
       - '8080:8080'

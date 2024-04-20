@@ -6,24 +6,16 @@
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'user.g.dart';
+part 'user_patch.g.dart';
 
-/// User
+/// UserPatch
 ///
 /// Properties:
-/// * [email]
-/// * [id]
 /// * [familyName]
 /// * [givenName]
 /// * [name]
 @BuiltValue()
-abstract class User implements Built<User, UserBuilder> {
-  @BuiltValueField(wireName: r'email')
-  String get email;
-
-  @BuiltValueField(wireName: r'id')
-  String get id;
-
+abstract class UserPatch implements Built<UserPatch, UserPatchBuilder> {
   @BuiltValueField(wireName: r'family_name')
   String? get familyName;
 
@@ -33,39 +25,29 @@ abstract class User implements Built<User, UserBuilder> {
   @BuiltValueField(wireName: r'name')
   String? get name;
 
-  User._();
+  UserPatch._();
 
-  factory User([void updates(UserBuilder b)]) = _$User;
+  factory UserPatch([void updates(UserPatchBuilder b)]) = _$UserPatch;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(UserBuilder b) => b;
+  static void _defaults(UserPatchBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<User> get serializer => _$UserSerializer();
+  static Serializer<UserPatch> get serializer => _$UserPatchSerializer();
 }
 
-class _$UserSerializer implements PrimitiveSerializer<User> {
+class _$UserPatchSerializer implements PrimitiveSerializer<UserPatch> {
   @override
-  final Iterable<Type> types = const [User, _$User];
+  final Iterable<Type> types = const [UserPatch, _$UserPatch];
 
   @override
-  final String wireName = r'User';
+  final String wireName = r'UserPatch';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    User object, {
+    UserPatch object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'email';
-    yield serializers.serialize(
-      object.email,
-      specifiedType: const FullType(String),
-    );
-    yield r'id';
-    yield serializers.serialize(
-      object.id,
-      specifiedType: const FullType(String),
-    );
     if (object.familyName != null) {
       yield r'family_name';
       yield serializers.serialize(
@@ -92,7 +74,7 @@ class _$UserSerializer implements PrimitiveSerializer<User> {
   @override
   Object serialize(
     Serializers serializers,
-    User object, {
+    UserPatch object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object,
@@ -105,27 +87,13 @@ class _$UserSerializer implements PrimitiveSerializer<User> {
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required UserBuilder result,
+    required UserPatchBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
-        case r'email':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(String),
-          ) as String;
-          result.email = valueDes;
-          break;
-        case r'id':
-          final valueDes = serializers.deserialize(
-            value,
-            specifiedType: const FullType(String),
-          ) as String;
-          result.id = valueDes;
-          break;
         case r'family_name':
           final valueDes = serializers.deserialize(
             value,
@@ -159,12 +127,12 @@ class _$UserSerializer implements PrimitiveSerializer<User> {
   }
 
   @override
-  User deserialize(
+  UserPatch deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = UserBuilder();
+    final result = UserPatchBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

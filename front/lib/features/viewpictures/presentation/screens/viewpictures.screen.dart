@@ -122,10 +122,17 @@ class _ViewPicturesState extends State<ViewPicture> {
                             context: context,
                             builder: (BuildContext context) {
                               return PhotoViewer(
-                                imageList: imageAlbum,
-                                initialIndex: index,
-                                albumId: widget.albumId,
-                              );
+                                  imageList: imageAlbum,
+                                  initialIndex: index,
+                                  accessToken: userProvider.user!.accessToken!,
+                                  albumId: widget.albumId,
+                                  deleteImageUseCase: DeleteImageUseCase(
+                                      Provider.of<ImagesProvider>(context,
+                                          listen: false),
+                                      userProvider.user!.accessToken!),
+                                  onImageDeleted: () {
+                                    _loadPicture();
+                                  });
                             },
                           );
                         },
