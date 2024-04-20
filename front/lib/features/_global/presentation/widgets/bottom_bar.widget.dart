@@ -27,35 +27,41 @@ class BottomBarWidget extends StatelessWidget {
       final imagesProvider =
           Provider.of<ImagesProvider>(context, listen: false);
       final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final accessToken = userProvider.user?.accessToken;
-      if (accessToken == null) {
-        throw Exception("Token d'accès non trouvé.");
-      }
+
       UploadImagesUseCase uploadImagesUseCase = UploadImagesUseCase(
         imagesProvider: imagesProvider,
         albumProvider: albumProvider,
-        accessToken: accessToken,
+        accessToken:
+            accessToken, // Utilisation de accessToken passé au constructeur
         onSuccess: onSuccess,
       );
 
       uploadImagesUseCase(selectedAlbum, images, []);
     }
 
-    void openCamera() async {
-      final ImagePicker pickerCamera = ImagePicker();
-      final XFile? photo =
-          await pickerCamera.pickImage(source: ImageSource.camera);
-      if (photo != null) {
-        uploadImages([photo]);
-      }
-    }
-
-    void openGallery() async {
+    Future<void> pickImages(ImageSource source) async {
       final ImagePicker picker = ImagePicker();
-      final List<XFile>? images = await picker.pickMultiImage();
-      if (images != null && images.isNotEmpty) {
-        uploadImages(images);
+      List<XFile>? images;
+
+      try {
+        if (source == ImageSource.camera) {
+          final XFile? photo = await picker.pickImage(source: source);
+          if (photo != null) {
+            images = [photo];
+          }
+        } else {
+          images = await picker.pickMultiImage();
+        }
+
+        if (images != null && images.isNotEmpty) {
+          uploadImages(images);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Aucune image sélectionnée.')));
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Erreur lors de la sélection de l\'image : $e')));
       }
     }
 
@@ -68,10 +74,10 @@ class BottomBarWidget extends StatelessWidget {
             onSelected: (value) {
               switch (value) {
                 case 'importFromGallery':
-                  openGallery();
+                  pickImages(ImageSource.gallery);
                   break;
                 case 'useCamera':
-                  openCamera();
+                  pickImages(ImageSource.camera);
                   break;
               }
             },

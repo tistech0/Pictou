@@ -19,13 +19,15 @@ class ImagesProvider with ChangeNotifier {
 
   ImagesProvider(this._pictouApi, this._serializers)
       : _imagesApi = _pictouApi.getImagesApi(),
-      _albumsApi = _pictouApi.getAlbumsApi();
+        _albumsApi = _pictouApi.getAlbumsApi();
   List<ImageEntity> _images = [];
   List<ImageEntity> get images => _images;
 
-  Stream<List<Uint8List>> fetchImagesAlbum(String accessToken, String albumId, ImageQuality quality) async* {
+  Stream<List<Uint8List>> fetchImagesAlbum(
+      String accessToken, String albumId, ImageQuality quality) async* {
     try {
-      final response = await _albumsApi.getAlbum(id: albumId, headers: {"Authorization": "Bearer $accessToken"});
+      final response = await _albumsApi.getAlbum(
+          id: albumId, headers: {"Authorization": "Bearer $accessToken"});
       if (response.statusCode == 200 && response.data != null) {
         final Album? album = response.data;
         final BuiltList<ImageMetaData>? images = album?.images;
@@ -33,16 +35,18 @@ class ImagesProvider with ChangeNotifier {
           List<Uint8List> downloadedImages = [];
           for (var image in images) {
             print('Image ID: ${image.id}');
-            final response = await _imagesApi.getImage(id: image.id, quality: quality, headers: {
-              "Authorization": "Bearer $accessToken"
-            });
+            final response = await _imagesApi.getImage(
+                id: image.id,
+                quality: quality,
+                headers: {"Authorization": "Bearer $accessToken"});
             if (response.statusCode == 200 && response.data != null) {
               final Uint8List? imageData = response.data;
               // Decode the image data using the image package
               final imglib.Image? decodedImage = imglib.decodeImage(imageData!);
               if (decodedImage != null) {
                 // Determine the format of the image data based on the Content-Type header
-                final String? contentType = response.headers.map['content-type']?.first;
+                final String? contentType =
+                    response.headers.map['content-type']?.first;
                 final String format = contentType?.split('/').last ?? '';
                 // Encode the decoded image data as a PNG or JPEG depending on the original format
                 final Uint8List encodedImage = format == 'jpeg'
@@ -61,24 +65,28 @@ class ImagesProvider with ChangeNotifier {
     }
   }
 
-  Future<Uint8List?> fetchFirstImageOfAlbum(String accessToken, String albumId, ImageQuality quality) async {
+  Future<Uint8List?> fetchFirstImageOfAlbum(
+      String accessToken, String albumId, ImageQuality quality) async {
     try {
-      final response = await _albumsApi.getAlbum(id: albumId, headers: {"Authorization": "Bearer $accessToken"});
+      final response = await _albumsApi.getAlbum(
+          id: albumId, headers: {"Authorization": "Bearer $accessToken"});
       if (response.statusCode == 200 && response.data != null) {
         final Album? album = response.data;
         final BuiltList<ImageMetaData>? images = album?.images;
         if (images != null && images.length > 0) {
           final ImageMetaData firstImage = images.first;
-          final response = await _imagesApi.getImage(id: firstImage.id, quality: quality, headers: {
-            "Authorization": "Bearer $accessToken"
-          });
+          final response = await _imagesApi.getImage(
+              id: firstImage.id,
+              quality: quality,
+              headers: {"Authorization": "Bearer $accessToken"});
           if (response.statusCode == 200 && response.data != null) {
             final Uint8List? imageData = response.data;
             // Decode the image data using the image package
             final imglib.Image? decodedImage = imglib.decodeImage(imageData!);
             if (decodedImage != null) {
               // Encode the decoded image data as a PNG or JPEG depending on the original format
-              final String? contentType = response.headers.map['content-type']?.first;
+              final String? contentType =
+                  response.headers.map['content-type']?.first;
               final String format = contentType?.split('/').last ?? '';
               final Uint8List encodedImage = format == 'jpeg'
                   ? Uint8List.fromList(imglib.encodeJpg(decodedImage))
@@ -89,12 +97,11 @@ class ImagesProvider with ChangeNotifier {
         }
       }
     } catch (e) {
-      print("Erreur lors de la récupération de la première image de l'album: $e");
+      print(
+          "Erreur lors de la récupération de la première image de l'album: $e");
     }
     return null;
   }
-
-
 
   Future<ImageUploadResponse?> uploadImage(
       MultipartFile imageFile, String accessToken) async {
@@ -133,5 +140,23 @@ class ImagesProvider with ChangeNotifier {
     } catch (e) {
       print("Exception lors de la suppression de l'image: $e");
     }
+  }
+
+  Future<String?> getImageIdByIndex(
+      String accessToken, String albumId, int index) async {
+    try {
+      final response = await _albumsApi.getAlbum(
+          id: albumId, headers: {"Authorization": "Bearer $accessToken"});
+      if (response.statusCode == 200 && response.data != null) {
+        final Album? album = response.data;
+        final BuiltList<ImageMetaData>? images = album?.images;
+        if (images != null && images.length > index) {
+          return images[index].id;
+        }
+      }
+    } catch (e) {
+      print("Erreur lors de la récupération de l'ID de l'image: $e");
+    }
+    return null;
   }
 }

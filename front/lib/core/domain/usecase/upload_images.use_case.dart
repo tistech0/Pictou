@@ -24,9 +24,7 @@ class UploadImagesUseCase {
   });
 
   Future<void> _editImageMetadata(String imageId, List<String> tags) async {
-    final imagePatch = ImagePatch((b) => b
-      ..tags.replace(tags)
-    );
+    final imagePatch = ImagePatch((b) => b..tags.replace(tags));
 
     try {
       await imageApi.editImage(
@@ -35,49 +33,57 @@ class UploadImagesUseCase {
         headers: {"Authorization": "Bearer $accessToken"},
       );
     } catch (e) {
-      print('Exception lors de la modification des métadonnées de l\'image: $e');
+      print(
+          'Exception lors de la modification des métadonnées de l\'image: $e');
     }
   }
 
-  Future<void> call(AlbumEntity? selectedAlbum, List<XFile> images, List<String> tag) async {
+  Future<void> call(
+      AlbumEntity? selectedAlbum, List<XFile> images, List<String> tags) async {
     if (selectedAlbum == null) {
       throw Exception("Album non sélectionné.");
     }
 
-    var errorOccurred = false;
-
+    List<Future> uploadTasks = [];
     for (var imageFile in images) {
-      try {
-        final image = await MultipartFile.fromFile(imageFile.path,
-            filename: path.basename(imageFile.path),
-            contentType: MediaType(
-                'image', path.extension(imageFile.path).substring(1)));
-
-        final uploadResponse =
-            await imagesProvider.uploadImage(image, accessToken);
-        if (uploadResponse == null) {
-          errorOccurred = true;
-          print('Échec du téléchargement de l\'image.');
-          continue;
-        }
-
-        await albumProvider.addImageToAlbum(
-            selectedAlbum.id, uploadResponse.id, accessToken);
-        await _editImageMetadata(uploadResponse.id, tag);
-      } catch (e) {
-        errorOccurred = true;
-        print(
-            'Exception lors du téléchargement ou de l\'ajout de l\'image: $e');
-      }
+      uploadTasks.add(_uploadAndHandleImage(imageFile, selectedAlbum.id, tags));
     }
 
+    final results = await Future.wait(uploadTasks, eagerError: false);
+
+    bool errorOccurred = results.any((result) => result != true);
     if (!errorOccurred) {
       print(
           'Toutes les images ont été téléchargées et ajoutées à l\'album avec succès.');
-      onSuccess(); // Appel du rappel lorsque tout est réussi
+      onSuccess();
     } else {
       print(
           'Certaines images n\'ont pas pu être téléchargées ou ajoutées à l\'album.');
+    }
+  }
+
+  Future<bool> _uploadAndHandleImage(
+      XFile imageFile, String albumId, List<String> tags) async {
+    try {
+      final image = await MultipartFile.fromFile(imageFile.path,
+          filename: path.basename(imageFile.path),
+          contentType:
+              MediaType('image', path.extension(imageFile.path).substring(1)));
+
+      final uploadResponse =
+          await imagesProvider.uploadImage(image, accessToken);
+      if (uploadResponse == null) {
+        print('Échec du téléchargement de l\'image.');
+        return false;
+      }
+
+      await albumProvider.addImageToAlbum(
+          albumId, uploadResponse.id, accessToken);
+      await _editImageMetadata(uploadResponse.id, tags);
+      return true;
+    } catch (e) {
+      print('Exception lors du téléchargement ou de l\'ajout de l\'image: $e');
+      return false;
     }
   }
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:front/core/domain/usecase/deleted_picture.use_case.dart';
 import 'package:pictouapi/pictouapi.dart';
 import 'package:front/core/domain/usecase/shared_album.use_case.dart';
 import 'package:front/features/viewpictures/presentation/widgets/shared_album.widget.dart';
@@ -20,7 +21,7 @@ class ViewPicture extends StatefulWidget {
   const ViewPicture({super.key, required this.albumId});
 
   @override
-  _ViewPicturesState createState() => _ViewPicturesState();
+  State<ViewPicture> createState() => _ViewPicturesState();
 }
 
 class _ViewPicturesState extends State<ViewPicture> {
@@ -51,6 +52,7 @@ class _ViewPicturesState extends State<ViewPicture> {
   }
 
   Future<void> _loadPicture() async {
+    /// Récupère les informations de l'utilisateur connecté
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final imageProvider = Provider.of<ImagesProvider>(context, listen: false);
     final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
@@ -61,6 +63,7 @@ class _ViewPicturesState extends State<ViewPicture> {
       _tags = album.tags;
       imageAlbumStream = imageProvider.fetchImagesAlbum(
           userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
+      setState(() {});
     }
   }
 
@@ -122,10 +125,17 @@ class _ViewPicturesState extends State<ViewPicture> {
                             context: context,
                             builder: (BuildContext context) {
                               return PhotoViewer(
-                                imageList: imageAlbum,
-                                initialIndex: index,
-                                albumId: widget.albumId,
-                              );
+                                  imageList: imageAlbum,
+                                  initialIndex: index,
+                                  accessToken: userProvider.user!.accessToken!,
+                                  albumId: widget.albumId,
+                                  deleteImageUseCase: DeleteImageUseCase(
+                                      Provider.of<ImagesProvider>(context,
+                                          listen: false),
+                                      userProvider.user!.accessToken!),
+                                  onImageDeleted: () {
+                                    _loadPicture();
+                                  });
                             },
                           );
                         },
