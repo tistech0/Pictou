@@ -75,6 +75,7 @@ Exécutez les commandes suivantes pour créer un nouveau projet Flutter :
 ```sh
 flutter create front
 cd front
+```
 
 Ajout de dépendances
 Ajoutez les dépendances suivantes dans votre fichier pubspec.yaml sous la section dependencies :
