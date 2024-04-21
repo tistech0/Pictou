@@ -1,16 +1,12 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'user.dart';
+part of 'user_patch.dart';
 
 // **************************************************************************
 // BuiltValueGenerator
 // **************************************************************************
 
-class _$User extends User {
-  @override
-  final String email;
-  @override
-  final String id;
+class _$UserPatch extends UserPatch {
   @override
   final String? familyName;
   @override
@@ -18,33 +14,22 @@ class _$User extends User {
   @override
   final String? name;
 
-  factory _$User([void Function(UserBuilder)? updates]) =>
-      (new UserBuilder()..update(updates))._build();
+  factory _$UserPatch([void Function(UserPatchBuilder)? updates]) =>
+      (new UserPatchBuilder()..update(updates))._build();
 
-  _$User._(
-      {required this.email,
-      required this.id,
-      this.familyName,
-      this.givenName,
-      this.name})
-      : super._() {
-    BuiltValueNullFieldError.checkNotNull(email, r'User', 'email');
-    BuiltValueNullFieldError.checkNotNull(id, r'User', 'id');
-  }
+  _$UserPatch._({this.familyName, this.givenName, this.name}) : super._();
 
   @override
-  User rebuild(void Function(UserBuilder) updates) =>
+  UserPatch rebuild(void Function(UserPatchBuilder) updates) =>
       (toBuilder()..update(updates)).build();
 
   @override
-  UserBuilder toBuilder() => new UserBuilder()..replace(this);
+  UserPatchBuilder toBuilder() => new UserPatchBuilder()..replace(this);
 
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is User &&
-        email == other.email &&
-        id == other.id &&
+    return other is UserPatch &&
         familyName == other.familyName &&
         givenName == other.givenName &&
         name == other.name;
@@ -53,8 +38,6 @@ class _$User extends User {
   @override
   int get hashCode {
     var _$hash = 0;
-    _$hash = $jc(_$hash, email.hashCode);
-    _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, familyName.hashCode);
     _$hash = $jc(_$hash, givenName.hashCode);
     _$hash = $jc(_$hash, name.hashCode);
@@ -64,9 +47,7 @@ class _$User extends User {
 
   @override
   String toString() {
-    return (newBuiltValueToStringHelper(r'User')
-          ..add('email', email)
-          ..add('id', id)
+    return (newBuiltValueToStringHelper(r'UserPatch')
           ..add('familyName', familyName)
           ..add('givenName', givenName)
           ..add('name', name))
@@ -74,16 +55,8 @@ class _$User extends User {
   }
 }
 
-class UserBuilder implements Builder<User, UserBuilder> {
-  _$User? _$v;
-
-  String? _email;
-  String? get email => _$this._email;
-  set email(String? email) => _$this._email = email;
-
-  String? _id;
-  String? get id => _$this._id;
-  set id(String? id) => _$this._id = id;
+class UserPatchBuilder implements Builder<UserPatch, UserPatchBuilder> {
+  _$UserPatch? _$v;
 
   String? _familyName;
   String? get familyName => _$this._familyName;
@@ -97,15 +70,13 @@ class UserBuilder implements Builder<User, UserBuilder> {
   String? get name => _$this._name;
   set name(String? name) => _$this._name = name;
 
-  UserBuilder() {
-    User._defaults(this);
+  UserPatchBuilder() {
+    UserPatch._defaults(this);
   }
 
-  UserBuilder get _$this {
+  UserPatchBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
-      _email = $v.email;
-      _id = $v.id;
       _familyName = $v.familyName;
       _givenName = $v.givenName;
       _name = $v.name;
@@ -115,28 +86,23 @@ class UserBuilder implements Builder<User, UserBuilder> {
   }
 
   @override
-  void replace(User other) {
+  void replace(UserPatch other) {
     ArgumentError.checkNotNull(other, 'other');
-    _$v = other as _$User;
+    _$v = other as _$UserPatch;
   }
 
   @override
-  void update(void Function(UserBuilder)? updates) {
+  void update(void Function(UserPatchBuilder)? updates) {
     if (updates != null) updates(this);
   }
 
   @override
-  User build() => _build();
+  UserPatch build() => _build();
 
-  _$User _build() {
+  _$UserPatch _build() {
     final _$result = _$v ??
-        new _$User._(
-            email:
-                BuiltValueNullFieldError.checkNotNull(email, r'User', 'email'),
-            id: BuiltValueNullFieldError.checkNotNull(id, r'User', 'id'),
-            familyName: familyName,
-            givenName: givenName,
-            name: name);
+        new _$UserPatch._(
+            familyName: familyName, givenName: givenName, name: name);
     replace(_$result);
     return _$result;
   }

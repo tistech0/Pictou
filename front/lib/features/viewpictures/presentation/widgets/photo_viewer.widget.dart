@@ -36,6 +36,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
   late PageController _pageController;
   String? _currentImageId;
   late int _currentIndex;
+  final albumApi = Pictouapi().getAlbumsApi();
 
   @override
   void initState() {
@@ -118,17 +119,17 @@ class _PhotoViewerState extends State<PhotoViewer> {
               child: IconButton(
                 icon: Icon(Icons.info_outline, color: Colors.black),
                 onPressed: () async {
-                  // final Response<Album> response = await albumApi.getAlbum(
-                  //   id: widget.albumId,
-                  //   headers: {
-                  //     "Authorization":
-                  //         "Bearer ${userProvider.user?.accessToken}",
-                  //   },
-                  // );
-                  // final Album? albumActual = response.data;
-                  // final ImageMetaData? imageMetadata =
-                  //     albumActual?.images[_currentIndex];
-                  // showMetadataDialog(context, imageMetadata!);
+                  final Response<Album> response = await albumApi.getAlbum(
+                    id: widget.albumId,
+                    headers: {
+                      "Authorization":
+                          "Bearer ${userProvider.user?.accessToken}",
+                    },
+                  );
+                  final Album? albumActual = response.data;
+                  final ImageMetaData? imageMetadata =
+                      albumActual?.images[_currentIndex];
+                  showMetadataDialog(context, imageMetadata!);
                 },
               ),
             ),

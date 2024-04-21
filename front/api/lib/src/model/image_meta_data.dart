@@ -40,8 +40,6 @@ abstract class ImageMetaData
   factory ImageMetaData([void updates(ImageMetaDataBuilder b)]) =
       _$ImageMetaData;
 
-  get path => null;
-
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(ImageMetaDataBuilder b) => b;
 

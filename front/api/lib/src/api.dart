@@ -4,7 +4,6 @@
 
 import 'package:dio/dio.dart';
 import 'package:built_value/serializer.dart';
-import 'package:pictouapi/pictouapi.dart';
 import 'package:pictouapi/src/serializers.dart';
 import 'package:pictouapi/src/auth/api_key_auth.dart';
 import 'package:pictouapi/src/auth/basic_auth.dart';
@@ -16,14 +15,15 @@ import 'package:pictouapi/src/api/images_api.dart';
 import 'package:pictouapi/src/api/users_api.dart';
 
 class Pictouapi {
+  static const String basePath = r'/api';
+
   final Dio dio;
   final Serializers serializers;
 
   Pictouapi({
     Dio? dio,
     Serializers? serializers,
-    String?
-        basePathOverride, // Utilisez ce paramètre pour passer l'URL de base complète
+    String? basePathOverride,
     List<Interceptor>? interceptors,
   })  : this.serializers = serializers ?? standardSerializers,
         this.dio = dio ??

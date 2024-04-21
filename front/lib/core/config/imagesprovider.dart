@@ -24,7 +24,7 @@ class ImagesProvider with ChangeNotifier {
   List<ImageEntity> get images => _images;
 
   Stream<List<Uint8List>> fetchImagesAlbum(
-      String accessToken, String albumId, ImageQuality quality) async* {
+      String accessToken, String albumId) async* {
     try {
       final response = await _albumsApi.getAlbum(
           id: albumId, headers: {"Authorization": "Bearer $accessToken"});
@@ -37,7 +37,7 @@ class ImagesProvider with ChangeNotifier {
             print('Image ID: ${image.id}');
             final response = await _imagesApi.getImage(
                 id: image.id,
-                quality: quality,
+                thumbnailSize: 0,
                 headers: {"Authorization": "Bearer $accessToken"});
             if (response.statusCode == 200 && response.data != null) {
               final Uint8List? imageData = response.data;
@@ -66,7 +66,7 @@ class ImagesProvider with ChangeNotifier {
   }
 
   Future<Uint8List?> fetchFirstImageOfAlbum(
-      String accessToken, String albumId, ImageQuality quality) async {
+      String accessToken, String albumId) async {
     try {
       final response = await _albumsApi.getAlbum(
           id: albumId, headers: {"Authorization": "Bearer $accessToken"});
@@ -77,7 +77,7 @@ class ImagesProvider with ChangeNotifier {
           final ImageMetaData firstImage = images.first;
           final response = await _imagesApi.getImage(
               id: firstImage.id,
-              quality: quality,
+              thumbnailSize: 0,
               headers: {"Authorization": "Bearer $accessToken"});
           if (response.statusCode == 200 && response.data != null) {
             final Uint8List? imageData = response.data;

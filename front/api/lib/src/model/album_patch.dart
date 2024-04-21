@@ -7,60 +7,75 @@ import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'album_post.g.dart';
+part 'album_patch.g.dart';
 
-/// AlbumPost
+/// AlbumPatch
 ///
 /// Properties:
 /// * [name]
+/// * [sharedWith]
 /// * [tags]
 @BuiltValue()
-abstract class AlbumPost implements Built<AlbumPost, AlbumPostBuilder> {
+abstract class AlbumPatch implements Built<AlbumPatch, AlbumPatchBuilder> {
   @BuiltValueField(wireName: r'name')
-  String get name;
+  String? get name;
+
+  @BuiltValueField(wireName: r'shared_with')
+  BuiltList<String>? get sharedWith;
 
   @BuiltValueField(wireName: r'tags')
-  BuiltList<String> get tags;
+  BuiltList<String>? get tags;
 
-  AlbumPost._();
+  AlbumPatch._();
 
-  factory AlbumPost([void updates(AlbumPostBuilder b)]) = _$AlbumPost;
+  factory AlbumPatch([void updates(AlbumPatchBuilder b)]) = _$AlbumPatch;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(AlbumPostBuilder b) => b;
+  static void _defaults(AlbumPatchBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<AlbumPost> get serializer => _$AlbumPostSerializer();
+  static Serializer<AlbumPatch> get serializer => _$AlbumPatchSerializer();
 }
 
-class _$AlbumPostSerializer implements PrimitiveSerializer<AlbumPost> {
+class _$AlbumPatchSerializer implements PrimitiveSerializer<AlbumPatch> {
   @override
-  final Iterable<Type> types = const [AlbumPost, _$AlbumPost];
+  final Iterable<Type> types = const [AlbumPatch, _$AlbumPatch];
 
   @override
-  final String wireName = r'AlbumPost';
+  final String wireName = r'AlbumPatch';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    AlbumPost object, {
+    AlbumPatch object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
-    yield r'name';
-    yield serializers.serialize(
-      object.name,
-      specifiedType: const FullType(String),
-    );
-    yield r'tags';
-    yield serializers.serialize(
-      object.tags,
-      specifiedType: const FullType(BuiltList, [FullType(String)]),
-    );
+    if (object.name != null) {
+      yield r'name';
+      yield serializers.serialize(
+        object.name,
+        specifiedType: const FullType.nullable(String),
+      );
+    }
+    if (object.sharedWith != null) {
+      yield r'shared_with';
+      yield serializers.serialize(
+        object.sharedWith,
+        specifiedType: const FullType.nullable(BuiltList, [FullType(String)]),
+      );
+    }
+    if (object.tags != null) {
+      yield r'tags';
+      yield serializers.serialize(
+        object.tags,
+        specifiedType: const FullType.nullable(BuiltList, [FullType(String)]),
+      );
+    }
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    AlbumPost object, {
+    AlbumPatch object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object,
@@ -73,7 +88,7 @@ class _$AlbumPostSerializer implements PrimitiveSerializer<AlbumPost> {
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required AlbumPostBuilder result,
+    required AlbumPatchBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -83,15 +98,27 @@ class _$AlbumPostSerializer implements PrimitiveSerializer<AlbumPost> {
         case r'name':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(String),
-          ) as String;
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
           result.name = valueDes;
+          break;
+        case r'shared_with':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType:
+                const FullType.nullable(BuiltList, [FullType(String)]),
+          ) as BuiltList<String>?;
+          if (valueDes == null) continue;
+          result.sharedWith.replace(valueDes);
           break;
         case r'tags':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType(BuiltList, [FullType(String)]),
-          ) as BuiltList<String>;
+            specifiedType:
+                const FullType.nullable(BuiltList, [FullType(String)]),
+          ) as BuiltList<String>?;
+          if (valueDes == null) continue;
           result.tags.replace(valueDes);
           break;
         default:
@@ -103,12 +130,12 @@ class _$AlbumPostSerializer implements PrimitiveSerializer<AlbumPost> {
   }
 
   @override
-  AlbumPost deserialize(
+  AlbumPatch deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = AlbumPostBuilder();
+    final result = AlbumPatchBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

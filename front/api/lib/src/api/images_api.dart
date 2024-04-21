@@ -12,7 +12,6 @@ import 'package:pictouapi/src/api_util.dart';
 import 'package:pictouapi/src/model/api_error.dart';
 import 'package:pictouapi/src/model/image_meta_data.dart';
 import 'package:pictouapi/src/model/image_patch.dart';
-import 'package:pictouapi/src/model/image_quality.dart';
 import 'package:pictouapi/src/model/image_upload_response.dart';
 import 'package:pictouapi/src/model/images_meta_data.dart';
 
@@ -178,7 +177,7 @@ class ImagesApi {
   ///
   /// Parameters:
   /// * [id] - Identifier of the image
-  /// * [quality] - Image quality
+  /// * [thumbnailSize] - Size of the thumbnail to return (in pixels). If not provided (or 0), the original image is returned. The size is rounded to the upper multiple of 64.
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -190,7 +189,7 @@ class ImagesApi {
   /// Throws [DioException] if API call or serialization fails
   Future<Response<Uint8List>> getImage({
     required String id,
-    ImageQuality? quality,
+    int? thumbnailSize,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -216,8 +215,8 @@ class ImagesApi {
     );
 
     final _queryParameters = <String, dynamic>{
-      r'quality': encodeQueryParameter(
-          _serializers, quality, const FullType(ImageQuality)),
+      r'thumbnail_size': encodeQueryParameter(
+          _serializers, thumbnailSize, const FullType(int)),
     };
 
     final _response = await _dio.request<Object>(
@@ -262,7 +261,7 @@ class ImagesApi {
   /// Parameters:
   /// * [limit] - Number of images to return
   /// * [offset] - Offset of the query in the image list to return
-  /// * [quality] - Image quality
+  /// * [tags] - Filter images by tags
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -275,7 +274,7 @@ class ImagesApi {
   Future<Response<ImagesMetaData>> getImages({
     int? limit,
     int? offset,
-    ImageQuality? quality,
+    String? tags,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -300,8 +299,7 @@ class ImagesApi {
       r'limit': encodeQueryParameter(_serializers, limit, const FullType(int)),
       r'offset':
           encodeQueryParameter(_serializers, offset, const FullType(int)),
-      r'quality': encodeQueryParameter(
-          _serializers, quality, const FullType(ImageQuality)),
+      r'tags': encodeQueryParameter(_serializers, tags, const FullType(String)),
     };
 
     final _response = await _dio.request<Object>(

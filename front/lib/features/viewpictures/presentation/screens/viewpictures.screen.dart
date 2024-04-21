@@ -13,6 +13,7 @@ import 'package:front/core/config/imagesprovider.dart';
 import 'package:front/core/config/userprovider.dart';
 import 'package:front/features/_global/presentation/widgets/bottom_bar.widget.dart';
 
+import '../../../../core/domain/usecase/deleted_picture.use_case.dart';
 import '../widgets/photo_viewer.widget.dart';
 
 class ViewPicture extends StatefulWidget {
@@ -62,8 +63,7 @@ class _ViewPicturesState extends State<ViewPicture> {
     if (userProvider.user?.accessToken != null && album != null) {
       _tags = album.tags;
       imageAlbumStream = imageProvider.fetchImagesAlbum(
-          userProvider.user!.accessToken!, widget.albumId, ImageQuality.low);
-      setState(() {});
+          userProvider.user!.accessToken!, widget.albumId);
     }
   }
 

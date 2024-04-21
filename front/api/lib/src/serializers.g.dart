@@ -10,6 +10,7 @@ Serializers _$serializers = (new Serializers().toBuilder()
       ..add($PersistedUserInfo.serializer)
       ..add(Album.serializer)
       ..add(AlbumList.serializer)
+      ..add(AlbumPatch.serializer)
       ..add(AlbumPost.serializer)
       ..add(ApiError.serializer)
       ..add(ApiErrorCode.serializer)
@@ -19,13 +20,11 @@ Serializers _$serializers = (new Serializers().toBuilder()
       ..add(AuthenticationResponse.serializer)
       ..add(ImageMetaData.serializer)
       ..add(ImagePatch.serializer)
-      ..add(ImageQuality.serializer)
       ..add(ImageUploadResponse.serializer)
       ..add(ImagesMetaData.serializer)
       ..add(RefreshTokenParams.serializer)
       ..add(User.serializer)
-      ..add(UserList.serializer)
-      ..add(UserPost.serializer)
+      ..add(UserPatch.serializer)
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Album)]),
           () => new ListBuilder<Album>())
@@ -58,10 +57,7 @@ Serializers _$serializers = (new Serializers().toBuilder()
           () => new ListBuilder<String>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
-          () => new ListBuilder<String>())
-      ..addBuilderFactory(
-          const FullType(BuiltList, const [const FullType(User)]),
-          () => new ListBuilder<User>()))
+          () => new ListBuilder<String>()))
     .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint
