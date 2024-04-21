@@ -56,7 +56,7 @@ diesel migration revert # to revert the last migration
 diesel migration redo # to revert and re-run the last migrationDiesel
 ```
 
-# Pictou Flutter
+### Pictou Flutter
 ## Description
 
 - TODO
@@ -79,7 +79,7 @@ cd front
 Ajout de dépendances
 Ajoutez les dépendances suivantes dans votre fichier pubspec.yaml sous la section dependencies :
 
-```
+```sh
 dependencies:
   flutter:
     sdk: flutter
@@ -106,8 +106,7 @@ dev_dependencies:
 Configuration initiale
 
 Après avoir ajouté les dépendances et démarrer le projet, récupérez-les avec :
-
-```
+```sh
 flutter pub get
 flutter run
 ```
