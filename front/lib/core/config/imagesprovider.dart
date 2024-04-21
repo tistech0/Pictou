@@ -159,4 +159,31 @@ class ImagesProvider with ChangeNotifier {
     }
     return null;
   }
+
+  Stream<List<Uint8List>> fetchImagesByIds(String accessToken, List<String> imageIds) async* {
+    List<Uint8List> downloadedImages = [];
+    for (var imageId in imageIds) {
+      final response = await _imagesApi.getImage(
+          id: imageId,
+          thumbnailSize: 0,
+          headers: {"Authorization": "Bearer $accessToken"});
+      if (response.statusCode == 200 && response.data != null) {
+        final Uint8List? imageData = response.data;
+        // Decode the image data using the image package
+        final imglib.Image? decodedImage = imglib.decodeImage(imageData!);
+        if (decodedImage != null) {
+          // Determine the format of the image data based on the Content-Type header
+          final String? contentType = response.headers.map['content-type']?.first;
+          final String format = contentType?.split('/').last ?? '';
+          // Encode the decoded image data as a PNG or JPEG depending on the original format
+          final Uint8List encodedImage = format == 'jpeg'
+              ? Uint8List.fromList(imglib.encodeJpg(decodedImage))
+              : Uint8List.fromList(imglib.encodePng(decodedImage));
+          // Store the encoded image data in a list
+          downloadedImages.add(encodedImage);
+          yield downloadedImages; // Yield the current state of the downloadedImages each time a new image is added
+        }
+      }
+    }
+  }
 }
