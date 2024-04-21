@@ -119,3 +119,10 @@ flutter run
 
 You can access the openapi json schema at `/api-docs/openapi.json` and to the swaggerui at `/swagger-ui/index.html`.
 
+### Flutter openAPI command
+
+```sh
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+
