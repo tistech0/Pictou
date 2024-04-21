@@ -56,6 +56,66 @@ diesel migration revert # to revert the last migration
 diesel migration redo # to revert and re-run the last migrationDiesel
 ```
 
+# Pictou Flutter
+## Description
+
+- TODO
+
+## Configuration de l'environnement de développement
+
+### Démarrage d'un projet Flutter
+
+Pour démarrer avec Flutter, assurez-vous d'avoir Flutter et Dart installé sur votre machine. Suivez les instructions sur le site officiel de Flutter pour installer l'outil sur votre système d'exploitation.
+
+Ou utilser FVM - pour flutter
+#### Création d'un nouveau projet
+
+Exécutez les commandes suivantes pour créer un nouveau projet Flutter :
+
+```sh
+flutter create front
+cd front
+
+Ajout de dépendances
+Ajoutez les dépendances suivantes dans votre fichier pubspec.yaml sous la section dependencies :
+
+```
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  provider: ^6.0.0
+  image_picker: ^1.0.7
+  dio: ^5.4.2+1
+  webview_flutter: ^3.0.0
+  flutter_dotenv: ^5.1.0
+  openapi_generator_annotations: ^5.0.2
+  dotenv: ^3.0.0
+  image: ^3.0.1
+  mime: ^1.0.2
+  pictouapi:
+    path: ./api
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  openapi_generator: ^5.0.2
+  analyzer: ^6.2.0
+  flutter_lints: ^3.0.1
+```
+Configuration initiale
+
+Après avoir ajouté les dépendances et démarrer le projet, récupérez-les avec :
+
+```
+flutter pub get
+flutter run
+```
+
+
+
+
 ### API documentation
 
 You can access the openapi json schema at `/api-docs/openapi.json` and to the swaggerui at `/swagger-ui/index.html`.
+
