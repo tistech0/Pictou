@@ -7,10 +7,10 @@ class ShareAlbumDialog extends StatefulWidget {
   final ShareAlbumUseCase useCase;
 
   const ShareAlbumDialog({
-    Key? key,
+    super.key,
     required this.albumId,
     required this.useCase,
-  }) : super(key: key);
+  });
 
   @override
   State<ShareAlbumDialog> createState() => _ShareAlbumDialogState();

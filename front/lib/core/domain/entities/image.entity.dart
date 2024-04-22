@@ -1,6 +1,5 @@
 class ImageEntity {
   final String id;
-  final String path;
   final String caption; // Légende de l'image
   final String ownerId; // Identifiant du propriétaire de l'image
   final List<String>
@@ -9,7 +8,6 @@ class ImageEntity {
 
   ImageEntity({
     required this.id,
-    required this.path,
     required this.caption,
     required this.ownerId,
     required this.sharedWith,
@@ -20,7 +18,6 @@ class ImageEntity {
   factory ImageEntity.fromJson(Map<String, ImageEntity> json) {
     return ImageEntity(
       id: json['id'] as String,
-      path: json['path'] as String,
       caption: json['caption'] as String,
       ownerId: json['owner_id'] as String,
       sharedWith: List<String>.from(json['shared_with'] as List<dynamic>),
@@ -32,7 +29,6 @@ class ImageEntity {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'path': path,
       'caption': caption,
       'owner_id': ownerId,
       'shared_with': sharedWith,
@@ -42,13 +38,12 @@ class ImageEntity {
 
   @override
   String toString() {
-    return 'ImageEntity(id: $id, path: $path, caption: $caption, ownerId: $ownerId, sharedWith: $sharedWith, tags: $tags)';
+    return 'ImageEntity(id: $id, caption: $caption, ownerId: $ownerId, sharedWith: $sharedWith, tags: $tags)';
   }
 
   static fromImageModel(image) {
     return ImageEntity(
       id: image.id,
-      path: image.path,
       caption: image.caption,
       ownerId: image.ownerId,
       sharedWith: image.sharedWith.toList(),
