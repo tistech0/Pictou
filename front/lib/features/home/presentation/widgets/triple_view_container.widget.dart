@@ -60,7 +60,7 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
           ImageEntity(
             id: '',
             caption: 'Image par défaut',
-            // path: 'assets/images/default_image.jpeg',
+            path: 'assets/images/default_image.jpeg',
             ownerId: '',
             sharedWith: [],
             tags: [],
