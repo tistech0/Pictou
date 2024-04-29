@@ -55,7 +55,7 @@ class _AlbumCarouselWidgetState extends State<AlbumCarouselWidget> {
     if (albums.isEmpty || albums.length % 2 != 0) {
       secondLineAlbums.add(AlbumEntity(
         id: '',
-        name: 'Album fictif',
+        name: '',
         images: [
           ImageEntity(
             id: '',

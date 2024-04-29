@@ -113,30 +113,18 @@ class AlbumProvider with ChangeNotifier {
   Future<void> addShared(
       String albumId, String userId, String accessToken) async {
     try {
-      var albumsApi = _pictouApi.getAlbumsApi();
       final existingAlbum = _albums.firstWhere((album) => album.id == albumId);
 
-      if (existingAlbum == null) {
-        print("Album introuvable");
-        return;
-      }
-
-      final albumPost = AlbumPatch((b) => b
-        // ..name = existingAlbum.name
-        // ..tags = ListBuilder(existingAlbum.tags)
-        // ..images = ListBuilder(existingAlbum.images.map((image) => image.id))
-        ..sharedWith = (ListBuilder(existingAlbum.sharedWith)..add(userId)));
-
-      final response = await albumsApi.editAlbum(
+      final response = await _pictouApi.getAlbumsApi().editAlbum(
         id: albumId,
-        albumPatch: albumPost,
+        albumPatch: AlbumPatch((b) => b
+          ..name = existingAlbum.name
+          ..sharedWith = (ListBuilder(existingAlbum.sharedWith)..add(userId))),
         headers: {"Authorization": "Bearer $accessToken"},
       );
-      print(albumPost);
 
       if (response.statusCode == 200 && response.data != null) {
         print("Modification de l'album réussie.");
-        // Mise à jour de l'album avec les nouvelles informations
         final updatedAlbum = AlbumEntity.fromAlbumModel(response.data!);
         _albums[_albums.indexWhere((album) => album.id == albumId)] =
             updatedAlbum;

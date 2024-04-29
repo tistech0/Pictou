@@ -1,6 +1,6 @@
 class ImageEntity {
   final String id;
-  final String path;
+  final String? path; // Rendu optionnel
   final String caption; // Légende de l'image
   final String ownerId; // Identifiant du propriétaire de l'image
   final List<String>
@@ -9,7 +9,7 @@ class ImageEntity {
 
   ImageEntity({
     required this.id,
-    required this.path,
+    this.path, // Changement ici pour permettre null
     required this.caption,
     required this.ownerId,
     required this.sharedWith,
@@ -17,10 +17,10 @@ class ImageEntity {
   });
 
   // Méthode pour créer une instance d'ImageEntity à partir d'un objet JSON
-  factory ImageEntity.fromJson(Map<String, ImageEntity> json) {
+  factory ImageEntity.fromJson(Map<String, dynamic> json) {
     return ImageEntity(
       id: json['id'] as String,
-      path: json['path'] as String,
+      path: json['path'] as String?, // Casting optionnel
       caption: json['caption'] as String,
       ownerId: json['owner_id'] as String,
       sharedWith: List<String>.from(json['shared_with'] as List<dynamic>),
@@ -30,9 +30,11 @@ class ImageEntity {
 
   // Méthode pour convertir une instance d'ImageEntity en objet JSON
   Map<String, dynamic> toJson() {
+    // Utilise un opérateur ternaire pour traiter la valeur null de path
     return {
       'id': id,
-      'path': path,
+      'path': path ??
+          '', // Vous pourriez aussi choisir de ne pas inclure path s'il est null
       'caption': caption,
       'owner_id': ownerId,
       'shared_with': sharedWith,
@@ -42,7 +44,7 @@ class ImageEntity {
 
   @override
   String toString() {
-    return 'ImageEntity(id: $id, path: $path, caption: $caption, ownerId: $ownerId, sharedWith: $sharedWith, tags: $tags)';
+    return 'ImageEntity(id: $id, path: ${path ?? "non spécifié"}, caption: $caption, ownerId: $ownerId, sharedWith: $sharedWith, tags: $tags)';
   }
 
   static fromImageModel(image) {
