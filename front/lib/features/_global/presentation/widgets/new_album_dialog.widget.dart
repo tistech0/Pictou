@@ -25,13 +25,19 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
   @override
   void dispose() {
     _albumNameController.dispose();
+    _tagsController.dispose();
+    _images = null;
     super.dispose();
   }
 
   void _validateTags() {
     final String input = _tagsController.text.trim();
     if (input.isNotEmpty) {
-      final List<String> newTags = input.split(',');
+      final List<String> newTags = input
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
       setState(() {
         _tags.addAll(newTags);
         _tagsController.clear();
@@ -46,42 +52,50 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
     final accessToken = userProvider.user?.accessToken;
 
     if (accessToken == null || _albumNameController.text.isEmpty) {
-      print('Access token ou nom d\'album manquant.');
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Access token ou nom d\'album manquant.')));
       return;
     }
 
-    // Création de l'album
-    final albumId = await albumProvider.createAlbum(
-      _albumNameController.text,
-      _tags,
-      [], // Initialement pas d'images
-      accessToken,
-    );
+    try {
+      final albumId = await albumProvider.createAlbum(
+        _albumNameController.text,
+        _tags,
+        [], // Initialement pas d'images
+        accessToken,
+      );
 
-    if (albumId != null) {
-      // Upload des images et ajout à l'album nouvellement créé
-      for (XFile image in _images!) {
-        try {
-          final imageFile = await MultipartFile.fromFile(image.path,
-              filename: path.basename(image.path),
-              contentType:
-                  MediaType('image', path.extension(image.path).substring(1)));
+      if (albumId != null) {
+        for (XFile image in _images!) {
+          try {
+            final imageFile = await MultipartFile.fromFile(image.path,
+                filename: path.basename(image.path),
+                contentType: MediaType(
+                    'image', path.extension(image.path).substring(1)));
 
-          final uploadResponse =
-              await imagesProvider.uploadImage(imageFile, accessToken);
-          if (uploadResponse != null) {
-            await albumProvider.addImageToAlbum(
-                albumId, uploadResponse.id, accessToken);
-          } else {
-            print('Échec de l\'upload de l\'image: ${image.path}');
+            final uploadResponse =
+                await imagesProvider.uploadImage(imageFile, accessToken);
+            if (uploadResponse != null) {
+              await albumProvider.addImageToAlbum(
+                  albumId, uploadResponse.id, accessToken);
+            } else {
+              throw Exception('Échec de l\'upload de l\'image');
+            }
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(
+                    'Erreur lors de l\'ajout de l\'image à l\'album: $e')));
           }
-        } catch (e) {
-          print('Erreur lors de l\'ajout de l\'image à l\'album: $e');
         }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                'Toutes les images ont été ajoutées avec succès à l\'album.')));
+      } else {
+        throw Exception('Échec de la création de l\'album.');
       }
-      print('Toutes les images ont été ajoutées avec succès à l\'album.');
-    } else {
-      print('Échec de la création de l\'album.');
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Erreur: $e')));
     }
 
     Navigator.of(context).pop();
