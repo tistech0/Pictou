@@ -39,7 +39,6 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
     }
   }
 
-
   Future<void> createAlbumAndUploadImages() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final albumProvider = Provider.of<AlbumProvider>(context, listen: false);
@@ -88,6 +87,23 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
     Navigator.of(context).pop();
   }
 
+  Widget _buildTagsChips() {
+    return Wrap(
+      spacing: 6.0,
+      runSpacing: 6.0,
+      children: _tags.map((String name) {
+        return Chip(
+          label: Text(name),
+          onDeleted: () {
+            setState(() {
+              _tags.remove(name);
+            });
+          },
+        );
+      }).toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -133,8 +149,7 @@ class _NewAlbumDialogState extends State<NewAlbumDialog> {
               child: const Text('Ajouter des tags'),
             ),
             const SizedBox(height: 20),
-            if (_tags.isNotEmpty)
-              for (var tag in _tags) Text(tag),
+            _buildTagsChips(),
             const SizedBox(height: 20),
             if (_images != null)
               for (var image in _images!) Text(image.name),
